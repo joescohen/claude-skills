@@ -1,0 +1,7 @@
+# Only track explicitly added skills — ignore everything else by default
+*
+!.gitignore
+!system-validation/
+!system-validation/**
+!skill-auditor/
+!skill-auditor/**
