@@ -124,12 +124,17 @@ Prompt must include:
 Wait for the agent to complete. Its return value contains the SPEC_COMPLETE checkpoint.
 
 **Parse SPEC_COMPLETE:**
-- Extract: purpose, tier1_reqs, tier2_reqs, tier3_reqs, risk_areas, files_read, specification_path
+- Extract: purpose, tier1_reqs, tier2_reqs, tier3_reqs, risk_areas, proactive_risks, files_read, specification_path
 
 **Enrich with your context:**
 1. Verify every `user_directive` appears as a risk area in the spec. If any are missing,
    add them yourself as `[USER-DIRECTED]` risk areas and update the spec file directly.
 2. Add any known_issues or user_concerns not captured by the spec agent.
+3. **Proactive risk gate:** Check that `proactive_risks` is non-empty. If the spec agent
+   returned zero RISK-PD entries, that is a signal it skipped Step 1b — add a note in the
+   calibration output flagging this. A real codebase always has something worth surfacing
+   autonomously. Do not block execution, but call it out so the user knows discovery was
+   shallow.
 
 ---
 

@@ -46,6 +46,44 @@ is waste — it does not improve the spec and it blows your context window.
 
 ---
 
+## Step 1b: Proactive Discovery Pass
+
+Before writing a single line of the spec, do this pass. It is the most important step
+in the pipeline — it is the only place where unknown unknowns get surfaced. Everything
+downstream (matrix rows, executor tests, report findings) is bounded by what you put in
+the spec. If you don't surface a risk here, no one will.
+
+**After reading the codebase, pause and ask yourself:**
+
+> "What did I see in this code that looks surprising, unconventional, fragile, or
+> potentially wrong — that the user has NOT mentioned and would NOT think to test?"
+
+Go through each component you read. For each one, ask:
+
+- **Rendering assumptions**: Does this code make assumptions about how it will render
+  that could silently break? (SVG coordinate systems, text baseline vs. center, absolute
+  positioning, z-index stacking, overflow behavior, font loading)
+- **Visual fragility**: Are there magic numbers, hardcoded coordinates, or pixel values
+  that would break if the container resizes or the font changes?
+- **Data assumptions**: Does the UI assume data will always have a certain shape, length,
+  or presence? What happens if a field is null, empty, or unusually long?
+- **Interaction edge cases**: What happens if the user does something slightly unexpected?
+  (double-click, rapid input, navigate away mid-action, resize the window)
+- **Integration seams**: Where does this component depend on something external (API,
+  library, browser API)? What fails silently if that dependency behaves differently?
+- **UX assumptions**: Does this component assume the user will do things in a specific
+  order? What happens if they don't?
+
+**Write down everything that gives you pause** — even vague intuitions like "this
+coordinate system seems offset" or "this text positioning feels like it would float."
+Your intuition about code is a signal, not a distraction.
+
+Each discovery becomes a `RISK-PD-N` (Proactively Discovered) entry in Section 6.
+These are **not lower priority** than user-directed risks — they are often higher
+priority, because they represent the gaps the user literally cannot pre-specify.
+
+---
+
 ## Step 2: Write specification.md
 
 Save to the output path provided in your dispatch prompt. If no output path was provided, use `/tmp/system-validation/`. Create the directory if needed with `mkdir -p`.
@@ -182,6 +220,26 @@ RISK-1: <ComponentA> × <ComponentB/StateB>
         Blast radius: <what other features are affected>
 ```
 
+**Proactively discovered risk areas (RISK-PD)**
+
+After the STAMP analysis and user-directed risks, add a section for everything you
+surfaced in Step 1b — risks you identified through your own reading, not from user
+directives or component interaction analysis.
+
+Format:
+```
+RISK-PD-1: [PROACTIVELY DISCOVERED] <what you noticed>
+           Failure mode: <what goes wrong if this assumption is violated>
+           Evidence: <where in the code you saw this — file, line, pattern>
+           Blast radius: <what a user would experience>
+```
+
+**Do not skip this section.** If you read the codebase and found nothing worth
+flagging proactively, that is almost certainly wrong — look harder. Real codebases
+always have rendering assumptions, data assumptions, or fragile seams that aren't
+covered by explicit requirements. The absence of RISK-PD entries is a signal that
+Step 1b was not done thoroughly.
+
 These risks become test rows in the validation matrix.
 
 ### 7. Verification Tiers
@@ -216,6 +274,10 @@ response (schema is reproduced below — emit it exactly):
 - visual_polish_tier: <T1 | T2 | T3 | N/A>  (from Section 5b classification)
 - user_directed_risks:
   - RISK-UD-1: <short title>  (omit if no user_directives were provided)
+- proactive_risks:
+  - RISK-PD-1: <short title — what you found autonomously>
+  (omit this section only if the system is trivially simple and you genuinely found nothing;
+  in practice this section should almost always have at least 2–3 entries)
 - files_read:
   - <path>
 - specification_path: <absolute path>
