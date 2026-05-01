@@ -44,6 +44,27 @@ file in the repo. Read enough to write each section of the spec with confidence,
 Stop reading files when you can confidently write every section below. Over-reading
 is waste — it does not improve the spec and it blows your context window.
 
+**Minimum reading floor — read these regardless of focus_area, before stopping:**
+
+These files are small and bounded. They define what the system does *above* any
+individual component. Not reading them means the system-level discovery pass
+(Step 1b) has no material to work with.
+
+- **Navigation / routing configuration** — the file that registers routes and
+  configures router behavior (scroll, history, transitions). In most web frameworks
+  this is one file: `router.ts`, `App.tsx`, `main.tsx`, or equivalent. This is the
+  only file that describes behavior *between* pages rather than *on* any page.
+- **Top-level layout or shell component** — the wrapper component that renders on
+  every page. This is the only file that defines elements that coexist with every
+  in-scope component on the visible screen.
+- **Global style or design token file** — the file that defines the system's shared
+  design language (`tailwind.config.ts`, `globals.css`, `theme.ts`, or equivalent).
+  This is the reference against which per-component quality is measured.
+
+If any of these files does not exist in this codebase, note that in your reading
+log and proceed. The absence of a routing configuration or design token file is
+itself a signal worth capturing in Step 1b.
+
 ---
 
 ## Step 1b: Proactive Discovery Pass
@@ -77,6 +98,35 @@ Go through each component you read. For each one, ask:
 **Write down everything that gives you pause** — even vague intuitions like "this
 coordinate system seems offset" or "this text positioning feels like it would float."
 Your intuition about code is a signal, not a distraction.
+
+**After the per-component pass, do a second pass at the system level.** Set aside
+the component list. Ask yourself these questions about the system as a whole:
+
+> "What properties of this system only become visible when I step back from any
+> individual component and look at the system as a whole?"
+
+Work through each of these lenses:
+
+- **Between states:** What happens between page renders — not on any single page?
+  Does the navigation layer handle scroll position, transition animations, history
+  state, or route-level side effects? What would a user notice in the moments *between*
+  page loads, not on any page itself?
+- **Cross-instance consistency:** What properties should be identical across every
+  instance of this system's pages or views? Pick any two pages you read and compare
+  them directly. Do they share the same design language and conventions, or have they
+  drifted apart?
+- **System-wide semantic distinctions:** What visual distinctions does this system
+  rely on to communicate meaning consistently — distinctions that must hold across the
+  entire surface, not just within each component? Are those distinctions actually
+  consistent when you look across components rather than inside each one?
+- **Shared-screen surfaces:** What elements appear on the same visible area as your
+  in-scope components but are not defined within any of those components? These
+  coexisting surfaces are invisible to per-component analysis but fully visible to any
+  user looking at the screen.
+
+Each discovery from this system-level pass becomes a `RISK-PD-N` entry, exactly like
+the per-component discoveries. These are not lower priority — they represent the class
+of defect that per-component analysis structurally cannot find.
 
 Each discovery becomes a `RISK-PD-N` (Proactively Discovered) entry in Section 6.
 These are **not lower priority** than user-directed risks — they are often higher

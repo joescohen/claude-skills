@@ -98,27 +98,53 @@ Wait for AUDIT_COMPLETE.
 
 ---
 
-## Step 5: Present to User
+## Step 5: Present to User — Lead with the Architectural Diagnosis
 
-Synthesize the auditor agent's findings. Do not dump the raw improvement report.
+Synthesize the auditor agent's findings. Do not dump the raw improvement report. The
+synthesis **must lead with the shared architectural property**, not with gap counts.
+Counts of symptoms and fixes are not measures of audit quality — the architectural
+diagnosis is.
 
-Present in this form:
+**Quality gate before presenting:**
 
-> **Audit complete.** [N] gaps found across [N] pipeline components.
+Before showing the audit to the user, check the AUDIT_COMPLETE checkpoint's
+`fix_quality_self_check` fields. If any of these is `false`:
+
+- `all_fixes_pass_anti_pattern_guard: false` — the auditor produced instance-shaped fixes
+- `all_fixes_have_predict_and_test: false` — fixes don't predict organic catches
+- `fix_count_less_than_symptom_count: false` — the auditor padded fixes to match symptoms
+
+…then the audit is incomplete. **Do not present it.** Re-dispatch the auditor with a
+note pointing out the failed self-check, asking it to return to Step 3 (Identify the
+Shared Architectural Property) and try again.
+
+**Presentation form:**
+
+> **Audit complete.** [N] symptoms traced to [M] architectural propert[y/ies].
 >
-> **Where the pipeline broke down:**
-> - `<agent-file.md>` — [what it missed and why, in plain language]
-> - `SKILL.md` — [if the Conductor logic itself was at fault]
+> **The shared property:** [one sentence naming the architectural property]
+> Located in: `<file>` § `<section>` — the instruction that exhibits it reads:
+> "[short quote]"
 >
-> **Proposed fixes ([N] changes):**
-> - [FIX-1: what changes, which file, why it closes the gap class]
+> **Symptoms this property explains:**
+> - [Symptom-1 — short]
+> - [Symptom-N — short]
+>
+> **Proposed architectural fixes ([K] changes, expected K < N):**
+> - [FIX-1: what *property of the pipeline* changes — not what it should look for]
 > - [FIX-2: same treatment]
 >
-> **Biggest impact:** [top fix — why this one matters most]
+> **Why this fixes the class, not the instances:**
+> [One paragraph: how the revised pipeline catches each symptom organically — i.e.
+> without the fix telling the pipeline to look for that specific symptom.]
+>
+> **Verification plan:** After fixes are applied, the audited skill will be re-run on
+> the same input. If any listed symptom still slips through, the architectural property
+> was misidentified — we'll return to diagnosis.
 >
 > Full improvement report: `<improvement_path>`
 >
-> Apply all [N] changes?
+> Apply all [K] changes?
 
 ---
 
@@ -137,26 +163,79 @@ If any edit fails to apply cleanly (text not found, already changed, etc.):
 - Show what the file currently contains in that section
 - Ask whether to skip or apply manually
 
-After all fixes are applied:
-> "Done. [N] files updated: [list]. The gaps should be closed on the next run.
-> Run `/[skill_name]` again to verify."
+After all fixes are applied, immediately proceed to Step 7. Do **not** declare the
+audit done after edits apply — the audit is not done until the fixes have been
+verified to close the symptoms organically.
+
+---
+
+## Step 7: Verify by Re-Running the Audited Skill
+
+The auditor — not the user — is responsible for verifying the fixes. Offloading
+verification to the user is how broken fixes ship.
+
+**Run the verification plan from `skill-improvement.md`:**
+
+1. Re-invoke the audited skill on the same input that produced the failed run.
+   - The verification plan in `skill-improvement.md` specifies the exact command and
+     input. Follow it.
+   - If the audited skill is interactive or stateful, dispatch it as a subagent so the
+     audit's main thread retains state.
+
+2. Compare the new run's artifacts against the symptoms list:
+   - For each Symptom-N from the audit: did the revised pipeline catch it?
+   - "Catch it" means a corresponding requirement, risk entry, test row, or finding
+     now exists in the new artifacts — produced by the natural operation of the
+     revised pipeline, not by anything the fix explicitly named.
+
+3. Report the result:
+
+> **Verification result:** [N of M] symptoms caught by the revised pipeline.
+>
+> ✅ Now caught: [list of symptoms with the artifact reference where each was caught]
+> ❌ Still missed: [list of any symptoms that slipped through again]
+>
+> [If 100% caught:] The architectural property was correctly identified. Audit complete.
+>
+> [If any missed:] The architectural property identified in Step 3 was incomplete or
+> wrong. The remaining gaps mean the pipeline still has a structural blind spot — a
+> further audit pass is needed. Want me to re-dispatch with the surviving symptoms?
+
+**Failure-of-verification handling:** If a symptom is still missed after the fix, do
+**not** propose a new instance-shaped patch for it. Re-dispatch the auditor with the
+surviving symptoms and explicit instruction to find the additional architectural
+property that was missed in the first pass. Instance-shaped fallbacks are the failure
+mode this whole structure exists to prevent.
+
+If the audited skill cannot be re-run automatically (e.g., requires user-side
+interaction or a live system not currently available), state the verification plan
+clearly and ask the user to run it. Make this a stated handoff, not an unstated
+assumption.
 
 ---
 
 ## Tone & Decision Principles
 
-- **Minimal, targeted fixes.** Touch only what's needed to close the gap class. Do not
-  rewrite entire sections to fix one missed pattern.
-- **General fixes, not instance fixes.** If the pipeline missed "small labels on dark
-  backgrounds", the fix should update the evaluation criteria for all low-contrast text —
-  not add a one-off check for the specific component that was reported.
-- **Traceable diagnosis.** Every fix must cite specific evidence from the artifacts or
-  agent files. "The spec agent's Section 6 has no RISK entry for responsive layout" beats
-  "the spec agent didn't cover mobile."
-- **Synthesize for the user.** The user gets a clear English summary. The full improvement
-  report is in the output file for reference.
-- **Make the call.** If a gap clearly maps to one agent, diagnose it and propose the fix.
-  Don't hedge when the evidence is clear.
-- **Recursive.** This skill can be applied to itself. If `/skill-auditor` produces a poor
-  analysis, run `/skill-auditor skill-auditor — [feedback]` and it will audit its own
-  SKILL.md and agents/auditor-agent.md.
+- **Architectural fixes, never checklist accretion.** A fix that adds items to a
+  list of "things the skill should look for" is the failure mode, not the cure. Fixes
+  must change *how the pipeline operates* — its scoping, its lenses, its self-checks —
+  not *what specific things it should detect*.
+- **The delete-domain-terms heuristic.** For every proposed fix, mentally delete every
+  reference to a specific UI element, content type, domain term, or instance from the
+  audited run. If the fix still describes a meaningful pipeline change, it's
+  architectural. If it collapses into nothing useful, it's instance-shaped — reject it.
+- **One architectural fix routinely closes a whole class of symptoms.** Expect fewer
+  fixes than symptoms. If the auditor produces one fix per symptom, it has not done
+  architectural work — re-dispatch.
+- **Minimal, targeted fixes.** Touch only what's needed. Don't rewrite entire sections
+  for one property change.
+- **Traceable diagnosis.** Every fix must cite specific evidence — quote the
+  instruction that exhibits the property, not vague gestures at "the spec agent."
+- **Synthesize for the user.** Lead with the architectural property. Symptoms are
+  evidence; counts are not the headline.
+- **Verify before declaring done.** The audit is not complete when edits apply
+  cleanly. It is complete when re-running the skill produces organic catches of the
+  previously-missed symptoms. The user is not the verifier.
+- **Recursive.** This skill can be applied to itself. If `/skill-auditor` produces a
+  poor analysis, run `/skill-auditor skill-auditor — [feedback]` and it will audit its
+  own SKILL.md and agents/auditor-agent.md against the same architectural lens.
