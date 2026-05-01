@@ -298,6 +298,36 @@ To evaluate:
 This check is **independent of stroke weight**: correct stroke weight alone does not
 satisfy this criterion — topology and spacing must both be verified.
 
+### 4h: Unconstrained Visual Judgment
+
+After running all the dimension checks above, look at every screenshot one more time —
+as if you are seeing the component for the first time as a visual designer, with no
+checklist in hand.
+
+**Do not constrain this pass to anything listed in 4a–4g.** Trust your perception.
+Ask yourself: *"If a senior designer saw this for the first time, what would they say
+needs fixing?"*
+
+You have multimodal vision. Use it. You do not need a rule to tell you a number looks
+off-center in a circle, a label looks cramped, an arrow looks like it's pointing the
+wrong way, or a section feels lopsided. If something looks wrong — flag it.
+
+Things this pass commonly catches that rules miss:
+- Elements that appear misaligned or off-center even without knowing the technical cause
+- Spacing or padding that feels uneven between similar elements
+- A visual that feels "floating" or disconnected from its container
+- Asymmetry in shapes or layouts that should be symmetric
+- Labels that feel too large, too small, or in the wrong place
+- Anything that makes the component look unfinished or like a draft
+
+For each issue noticed: describe what you *see*, not what rule was violated. The
+technical root cause belongs in the `actual` field if you know it — but the `description`
+should be in plain language that a non-engineer could understand.
+
+**This is not optional.** If you skip 4h, you are discarding your most powerful
+evaluation tool — your own visual perception. The dimension-based checks (4a–4g)
+catch known classes of defects. 4h catches everything else.
+
 **Logging visual polish findings:**
 Use the standard finding format. Severity is driven by the `visual_polish_tier` set
 in Section 5b of `specification.md`:
