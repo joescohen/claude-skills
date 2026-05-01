@@ -221,6 +221,41 @@ On dark backgrounds, verify the text opacity hierarchy is readable:
 - Tertiary/muted text: ≥ 38% white (opacity ≥ 0.38)
 - Below 30% opacity, text becomes invisible on most screens
 
+### 4g: SVG Text Vertical Centering Within Containers
+
+SVG `<text>` elements use baseline positioning by default — the `y` attribute sets the
+text **baseline**, not the visual center. Without `dominantBaseline="central"` (or
+equivalent), text labels inside circles, rectangles, or other containers will float
+**above** the geometric center, not at it.
+
+**This is a visual defect, not a cosmetic nit.** Numbers or labels that sit high in their
+circle look misaligned and unpolished — and screenshots make this clearly visible.
+
+For every `<text>` element that labels a circular or rectangular container (node numbers,
+stage IDs, block names):
+
+1. **DOM check**: Inspect the element for `dominantBaseline="central"` or `dy` offset
+   that compensates for baseline positioning (e.g. `dy="0.35em"` on elements with
+   `textAnchor="middle"`). If neither is present, the text is almost certainly floating
+   above center — flag it.
+2. **Visual check**: In the screenshot, draw a mental horizontal line through the circle's
+   center. The label's visual midpoint should sit **on** that line, not above it. If the
+   label is in the top half of the circle, flag it.
+
+Log as severity `high` if the `visual_polish_tier` is T1 or T2 — off-center labels in
+diagrams where the visual IS the product are a clear defect.
+
+```
+- id: FIND-<cluster_id>-VP-<NN>
+  severity: high
+  req_id: RISK-VP
+  description: SVG text label floats above container center — missing dominantBaseline="central"
+  expected: Label visually centered at circle/container midpoint
+  actual: Label baseline at y=<value>; visual center approximately <N>px above geometric center
+  evidence: screenshot path — label visibly in top half of circle
+  reproducible: true
+```
+
 ### 4f: Multi-Element Spatial Separation
 
 When a diagram uses multiple SVG elements (lines, paths, arrows, or strokes) to
