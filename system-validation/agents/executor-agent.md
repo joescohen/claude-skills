@@ -28,19 +28,28 @@ The Conductor provides these in your dispatch prompt:
 
 ---
 
-## REQUIRED: Browser Tool Check
+## REQUIRED: Execution Mode Selection
 
-Before doing anything else, discover your available browser tool:
+Before doing anything else, read your `system_type` from the dispatch prompt and select your execution mode:
 
+| `system_type` | Execution mode | Primary tools |
+|---|---|---|
+| `web_ui` | Browser | Claude in Chrome (`navigate`, `read_page`, `browser_batch`) or Claude Preview (`preview_start`, `preview_snapshot`, `preview_click`) |
+| `cli` | Shell + log parsing | Bash tool — run commands, capture stdout/stderr, parse structured log output as evidence |
+| `api` | HTTP + log parsing | Bash with curl/httpie, or SDK calls — capture response bodies + structured logs as evidence |
+
+**For `web_ui`:** Discover your available browser tool:
 ```
 tool_search("browser preview screenshot")
 tool_search("chrome browser navigate")
 ```
+Use **Claude in Chrome** if available; fall back to **Claude Preview**. If neither is available, emit CLUSTER_COMPLETE with all rows blocked and `evidence: "No browser tool available"`.
 
-Use **Claude in Chrome** tools if available (`navigate`, `computer`, `read_page`,
-`browser_batch`). Fall back to **Claude Preview** tools (`preview_start`,
-`preview_snapshot`, `preview_click`). If neither is available, emit CLUSTER_COMPLETE
-with all rows blocked and `evidence: "No browser tool available"`.
+**For `cli`:** Verify the Bash tool is available by running a lightweight command (e.g., `echo ok`). Your evidence for every row is stdout/stderr output and structured log lines, not screenshots. Use `observable_fields` from the dispatch prompt to know which log fields to parse. If `observable_fields` is empty, emit a warning in your findings and proceed — log output may be sparse.
+
+**For `api`:** Use curl or the appropriate SDK. Capture full HTTP response bodies and status codes as evidence. Parse structured log output from the server process if `observable_fields` was provided.
+
+**If `system_type` was not provided in the dispatch prompt:** default to `web_ui` but note the ambiguity in your findings.
 
 ---
 
@@ -68,6 +77,7 @@ If no directives were provided, proceed with single-viewport (1280px) execution.
 
 ## Phase 2: Environment Setup
 
+**For `web_ui` systems:**
 1. Open the browser tool and navigate to the system URL
 2. Take a **baseline screenshot** — this confirms the tool works and records initial state
 3. If `viewport_sweep` is active (mobile directive), also capture screenshots at 375px
@@ -79,8 +89,18 @@ If no directives were provided, proceed with single-viewport (1280px) execution.
 5. If the app requires login, log in now and take a post-login screenshot
 6. Note the current git commit/build version if visible
 
-If the app doesn't load, emit CLUSTER_COMPLETE with all rows blocked and describe
-the failure in each finding's `evidence` field.
+If the app doesn't load, emit CLUSTER_COMPLETE with all rows blocked and describe the failure in each finding's `evidence` field.
+
+**For `cli` systems:**
+1. Run the entry point with `--help` or `--version` to confirm the CLI is executable — capture output as baseline evidence
+2. Set `LOG_LEVEL=info` (or the project's log-level env var) in your environment before running any test command
+3. Note the Node version and any relevant env vars present (without printing secret values)
+4. There are no viewports, screenshots, or visual polish checks for CLI systems — skip Phases 4 and 5 entirely
+
+**For `api` systems:**
+1. Make a lightweight probe request (health/version endpoint) to confirm the server responds — capture the response as baseline evidence
+2. Note the server version or build info if returned
+3. Skip visual phases (4 and 5)
 
 7. **Verify the spec is readable** — attempt to read `specification_path`. If the file does not exist or is unreadable, emit CLUSTER_COMPLETE with all rows blocked and `evidence: "specification.md not found at [path]"`.
 
@@ -94,13 +114,31 @@ For each row:
 
 ### 3a: Perform the Action
 
-Execute the exact action described in the row's `Action` column. Then immediately:
+Execute the exact action described in the row's `Action` column. Then immediately collect evidence keyed to your `system_type`:
 
+**`web_ui` evidence:**
 1. **Take a screenshot** — no exceptions. A step without a screenshot is unverified.
 2. **Read the DOM** — use `read_page` or `preview_snapshot` to inspect element states
 3. **Compare visual vs DOM** — if they disagree, that's a finding
 
-**If `viewport_sweep` is active and this is a T1 row:**
+**`cli` evidence:**
+1. **Capture full stdout and stderr** — no exceptions. A step without captured output is unverified.
+2. **Parse structured log lines** — extract the `observable_fields` specified in your dispatch prompt (e.g. `primary_doc_type`, `confidence`, `routing_decision`, exit codes, error class). If a field is missing from a line where it should appear, that is a finding.
+3. **Check exit codes** — a non-zero exit code is a finding unless the row explicitly expects failure.
+4. **Note what is absent** — if a log event that should fire (e.g. `corpus.classification` after ingest) does not appear in output, that is a finding.
+5. **Output-conformance rows (VM-OC-*):** These rows verify distribution correctness, not execution. For each OC row:
+   - Query the `evidence_source` specified in the spec's OUTPUT-DIST-N invariant (e.g. run a DB query, parse a distribution table from logs, read a summary file).
+   - Compare the observed distribution against every bound in the invariant: expected classes present, fallback cap, confidence floor.
+   - **FAIL the row immediately** if ANY bound is violated — even if the pipeline ran without errors. A clean run that produces only 2 of 9 expected classes is a failing run.
+   - Severity: any OC row failure is `critical` if ALL expected classes bar one are absent; `high` otherwise.
+   - Do NOT accept "classification fired" as evidence that classification produced correct results. These are different properties.
+
+**`api` evidence:**
+1. **Capture full HTTP response body and status code** — required for every request.
+2. **Parse structured log output** from observable_fields if available.
+3. **Verify response schema** — compare returned fields to the spec's data invariants.
+
+**If `viewport_sweep` is active and this is a T1 row (web_ui only):**
 After completing the row at default viewport (1280px), repeat the same action at 375px
 and 768px. Take a screenshot at each width. Log the results separately. If the row
 passes at desktop but fails at mobile, it is a FAIL — not a partial pass.

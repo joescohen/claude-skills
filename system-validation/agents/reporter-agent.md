@@ -126,6 +126,41 @@ If no escalations occurred, write: "No escalations during execution."
 
 ---
 
+## Step 2.5: Output-Conformance Gate
+
+Before writing the executive summary or assigning any system-level verdict, check
+whether any output-conformance rows (VM-OC-*) were executed and whether they passed.
+
+**If any VM-OC-* row is in `rows_failed` across any cluster:**
+
+1. Elevate those findings to at minimum `high` severity (critical if all expected
+   classes but one were absent). Override whatever severity the executor reported.
+2. The executive summary MUST NOT characterize the system as "functionally ready",
+   "production ready", or "no critical findings" if any OC row failed. A system that
+   classifies all inputs as the fallback class is not functionally ready regardless
+   of what other rows passed.
+3. Add a dedicated **Output Quality** section to the report immediately after Statistics,
+   before the Issues list:
+   ```
+   ### Output Quality Gate
+   FAILED — output distribution does not conform to spec invariants.
+   [List each VM-OC-* row that failed, the invariant it tests, and the observed vs. expected bound.]
+   This is a blocking defect. The system's classification/routing pipeline produces
+   incorrect output distribution regardless of whether pipeline stages execute.
+   ```
+
+**If all VM-OC-* rows passed:** Add one line to the executive summary noting
+output-conformance was verified (e.g. "Output distribution conforms to all spec invariants.").
+
+**If no VM-OC-* rows were executed** but `specification.md` Section 4 contains
+OUTPUT-DIST-N invariants: this is a coverage gap — flag it as a HIGH finding:
+```
+FIND-OC-MISSING: Output-conformance cluster was not executed. Spec defines distribution
+invariants but no VM-OC-* rows exist in the matrix. System output quality is unverified.
+```
+
+---
+
 ## Step 3: Emit REPORT_COMPLETE
 
 Emit the following as the **final content** of your response:

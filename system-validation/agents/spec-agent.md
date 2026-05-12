@@ -31,6 +31,8 @@ The Conductor provides these in your dispatch prompt:
 Work proportionally to scope. A focused-area audit needs focused reading — not every
 file in the repo. Read enough to write each section of the spec with confidence, then stop.
 
+**For `web_ui` systems:**
+
 | Source | What to extract |
 |--------|----------------|
 | README / CLAUDE.md / docs | Stakeholder intent, feature list, design decisions |
@@ -39,6 +41,18 @@ file in the repo. Read enough to write each section of the spec with confidence,
 | API routes / data layer | What data flows in and out, what gets persisted |
 | DB schema / migrations | Entities, relationships, invariants |
 | Existing tests | What the developers already considered worth testing |
+| Backlog / issues / CHANGELOG | Known bugs, recently shipped changes, flagged areas |
+
+**For `cli` and `api` systems:**
+
+| Source | What to extract |
+|--------|----------------|
+| README / CLAUDE.md / docs | Command reference, flags, expected outputs, design decisions |
+| CLI entry point (`bin/`, `src/cli.ts`, `src/scan.ts`, etc.) | Top-level commands, argument parsing, invocation patterns |
+| Pipeline stage modules | Data flow — what enters each stage, what is produced, what is logged |
+| Zod schemas / TypeScript types | Expected shapes at each pipeline boundary; what validation can reject |
+| Structured logging calls (`pino`, `winston`, `console.log` with JSON) | What fields are emitted and at which stage — these are testable observables |
+| Existing tests | What the developers already considered worth testing — look for gaps in pipeline integration coverage |
 | Backlog / issues / CHANGELOG | Known bugs, recently shipped changes, flagged areas |
 
 Stop reading files when you can confidently write every section below. Over-reading
@@ -80,6 +94,16 @@ the spec. If you don't surface a risk here, no one will.
 > potentially wrong — that the user has NOT mentioned and would NOT think to test?"
 
 Go through each component you read. For each one, ask:
+
+**Additional questions for `cli` and `api` systems — error suppression and silent failure:**
+
+- **Empty or silent catch blocks**: Does any `try/catch` catch an exception and return a fallback silently — without logging, without setting an error field, without incrementing a counter? A silent fallback is indistinguishable from success from the outside.
+- **Missing log lines at stage boundaries**: Is every major pipeline stage transition logged with a structured event? If a stage produces output without logging it, a downstream failure cannot be attributed to that stage.
+- **Schema parse fallbacks**: Does any JSON/schema parse call catch validation errors and return a default value? The pipeline may believe classification succeeded when it actually failed silently.
+- **Conditional log calls**: Are any structured log calls guarded by feature flags, env vars, or config options that could be off in a real run? If the log line only fires when `generateContextSummaries: true`, it cannot be relied on as universal evidence.
+- **Threshold-dependent behavior**: Are there numeric thresholds (minimum chunk counts, confidence floors, score cutoffs) that determine whether a pipeline stage fires? What happens to chunks or documents that fall just below the threshold — are they silently dropped or visibly flagged?
+- **Absent log calls at observable events**: After an LLM call, after a schema validation, after a routing decision — is there a structured log line with the decision fields? If not, that decision is unobservable and cannot be tested.
+- **Output distribution validation** (classification, routing, and scoring pipelines): Does this pipeline classify, route, or score its outputs into typed categories (doc_types, labels, skills, severity levels, confidence scores)? If yes, you MUST define the expected output distribution as a Section 4 invariant (see below). Flag as RISK-PD if the pipeline has defined output classes but no test verifies that all expected classes appear in practice. A pipeline that claims to produce N output types but only ever emits 1 or 2 is broken — and will not be caught by execution-only tests.
 
 - **Rendering assumptions**: Does this code make assumptions about how it will render
   that could silently break? (SVG coordinate systems, text baseline vs. center, absolute
@@ -182,6 +206,29 @@ Map × Itinerary
 Entities, relationships, constraints that must always hold.
 Example: "every trip has at least one itinerary day"; "activity.day_id always
 references an existing itinerary_days row."
+
+**MANDATORY — Output Distribution Invariants (classification, routing, and scoring pipelines):**
+
+If the system under test classifies, routes, or scores its outputs into typed categories,
+define these invariants here. They become required test rows in the validation matrix —
+not optional coverage. A pipeline that executes is not a pipeline that works correctly.
+
+For each classification or routing pipeline, capture:
+
+```
+OUTPUT-DIST-N: <pipeline name> expected output distribution
+  expected_classes:
+    - <class_name>: at least <N> instances expected for a representative input
+    - <class_name>: ...
+  fallback_cap: "other" / "unknown" / fallback class must not exceed <X>% of total output
+  confidence_floor: no more than <Y>% of outputs may have confidence ≤ 0.0
+  evidence_source: <log field or DB column where distribution is observable>
+```
+
+If no classification/routing/scoring pipeline exists, omit this subsection.
+If it exists but you cannot determine the expected classes from reading the codebase,
+add a RISK-PD entry flagging this as an observable gap: a pipeline with undefined
+expected output classes cannot be validated for correctness.
 
 ### 5. Quality Attributes
 
@@ -328,6 +375,7 @@ response (schema is reproduced below — emit it exactly):
   - RISK-PD-1: <short title — what you found autonomously>
   (omit this section only if the system is trivially simple and you genuinely found nothing;
   in practice this section should almost always have at least 2–3 entries)
+- output_distribution_invariants_defined: <true | false — true if Section 4 contains OUTPUT-DIST-N entries>
 - files_read:
   - <path>
 - specification_path: <absolute path>

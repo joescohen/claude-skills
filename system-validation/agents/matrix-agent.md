@@ -108,6 +108,36 @@ error/edge-case state of that flow.
 **If directive is about data correctness** ("check the data", "make sure data is right"):
 Generate Analysis rows that query or inspect live data values against spec invariants.
 
+### Mandatory output-conformance cluster (classification, routing, and scoring pipelines)
+
+If `specification.md` Section 4 contains any `OUTPUT-DIST-N` invariants, you MUST
+generate a dedicated output-conformance cluster. This cluster is non-negotiable: it is
+the only mechanism that can detect a pipeline which executes but produces wrong outputs.
+
+**For each `OUTPUT-DIST-N` invariant in the spec, generate:**
+
+```
+| VM-OC-01 | OUTPUT-DIST-N | T1 | Analysis | Data | Query <evidence_source>; count instances of each expected_class | All <expected_classes> present at ≥ the specified minimum count | 5×5 = 25 |
+| VM-OC-02 | OUTPUT-DIST-N | T1 | Analysis | Data | Compute fraction of outputs classified as <fallback_class> | <fallback_class> fraction ≤ <fallback_cap>% of total | 5×5 = 25 |
+| VM-OC-03 | OUTPUT-DIST-N | T1 | Analysis | Data | Compute fraction of outputs with confidence ≤ 0.0 | ≤ <confidence_floor>% of outputs at zero confidence | 5×5 = 25 |
+```
+
+**Rules:**
+- All output-conformance rows are T1 with Risk 5×5 = 25 (highest possible).
+- They go in their own cluster (labeled `OC`) that runs before or alongside other T1 clusters.
+- They are never merged into a cluster with T2 or T3 rows.
+- A `user_directives_covered: true` verdict is insufficient if
+  `output_conformance_invariants_covered` is false.
+
+**What counts as FAIL for these rows:**
+- Any expected class is absent from the observed output (count = 0).
+- Fallback fraction exceeds the specified cap.
+- More than the specified threshold of outputs have confidence ≤ 0.0.
+
+These rows require no browser interaction and no screenshots. The executor queries the
+observable evidence source (log output, DB query, distribution table) and compares
+directly against the spec's invariant bounds.
+
 ### Default responsive rows for web UIs
 
 Even without an explicit mobile directive, always generate at minimum one responsive
@@ -136,6 +166,75 @@ Generate at minimum:
 If the spec identifies specific visual components (SVG diagrams, animations, 3D renders),
 add one Inspection row per component to verify its visual quality at rendered size.
 
+### Cross-Layer State-Propagation Auto-Generation
+
+State that is *set in one place, transported through code, and observed somewhere else*
+cannot be verified with a single test row. A single-row check on the output side reports
+"value present" or "value absent" but cannot tell you which layer broke when the value
+is wrong — it conflates a write-side bug, a transport bug, and an output-shape bug into
+one opaque finding. This is the trace_to pattern from learning case
+`2026-05-12-sepal-trace-to-instrumentation-blindness`: provable only when instrumented
+at all three layers with correlated IDs.
+
+**Trigger:** Inspect each Tier 1 requirement and risk area. If the spec contains a claim
+of the form "value X is set at A, propagated through B, observable at C" — or any
+semantic equivalent ("populated and surfaced", "written and read", "computed and
+emitted", "produced at one layer and consumed at another", "tracked across the
+pipeline") — apply the three-layer rule to that claim.
+
+**Rule:** For each cross-layer state-propagation claim, generate THREE coordinated rows
+sharing a correlation ID, not one:
+
+```
+| VM-SP-<n>-W | <RISK-ID> | T1 | Tap-Read   | <write-tap-event-name>     | Trigger condition; assert write-side TAP fires with expected payload and a unique correlation_id | TAP captured at write-side with non-null value and correlation_id stamped | <risk> |
+| VM-SP-<n>-B | <RISK-ID> | T1 | Tap-Read   | <boundary-tap-event-name>  | Same trigger; assert boundary/transport TAP fires with the SAME correlation_id and unchanged value | TAP captured at boundary with matching correlation_id and value parity vs write-side | <risk> |
+| VM-SP-<n>-O | <RISK-ID> | T1 | Tap-Read   | <output-tap-event-name>    | Same trigger; assert output-side TAP fires with the SAME correlation_id and the value as consumed | TAP captured at output-side with matching correlation_id and value parity vs boundary | <risk> |
+```
+
+Naming: `VM-SP-<n>-W` (write), `-B` (boundary/transport), `-O` (output). The same `<n>`
+ties the three to one claim. The correlation_id in the row text is the runtime mechanism
+that ties the three captured events together — without it the rows cannot prove the same
+state instance propagated, only that *some* state propagated.
+
+**Why three coordinated rows beat one end-to-end row:**
+
+- W passes, B fails, O fails → transport bug; write is fine
+- W passes, B passes, O fails → output-side serialization or extraction bug
+- W fails, B fails, O fails → write-side bug; the rest are downstream
+- W passes, B passes, O passes → the claim is proven *with mechanism*, not by coincidence
+
+A single end-to-end row would report only the fourth pattern as PASS and collapse the
+other three into "FAIL" with no localization.
+
+**Tool-use claims are a special case of state propagation.** A claim "model invokes tool
+X" is a propagation claim: prompt-side condition (W) → SDK boundary invocation event (B)
+→ tool result consumed by downstream code (O). Generate the three rows; do not collapse
+to a single "tool was invoked" row.
+
+If three-layer instrumentation does not yet exist on the path under test, this is a
+signal Gate -1 Step 4 (Observability Probe) should have flagged. Coordinate with the
+Conductor — the missing TAPs must be added (and proven via Gate -1 Step 5 capture-smoke)
+before the matrix is finalized. Rows that assert against a TAP event name that doesn't
+exist in production code are unrunnable, not optional.
+
+### Negative-Test / Positive-Control Pairing
+
+Every row whose pass criterion is **absence of a signal** (negative test) must be paired
+with at least one row using **the same capture mechanism** whose pass criterion is
+**presence of a signal** (positive control). Without a positive control, an empty
+capture stream is indistinguishable between "behavior correctly did not fire" and
+"capture mechanism is blind"; the negative-case PASS is vacuous.
+
+**Rule:** When generating any row with `Expected Result` of the form "no X", "X absent",
+"X not invoked", or "no event of type Y", the matrix MUST also contain a sibling row
+(same `Method`, same capture target) that asserts presence of an analogous signal under
+a triggering condition. Tag the pair with a shared `pair_id` in the row text so the
+executor can enforce the relationship.
+
+If the positive control fails when run, the matching negative test is
+downgraded by the executor to `INCONCLUSIVE`, never `PASS`. The executor and reporter
+will refuse to emit PASS on a negative case unpaired with a passing positive control.
+
 ### Coverage Rules
 
 Before finalizing, verify:
@@ -145,6 +244,10 @@ Before finalizing, verify:
 - Calibration answers are reflected as high-stress variant rows
 - Empty/error/overflow states covered for T1 features
 - **Visual polish rows exist for any web UI with visual components** (SVGs, diagrams, animations)
+- **Output-conformance cluster OC exists when spec contains OUTPUT-DIST-N invariants** — this is a hard requirement
+- **Three-layer SP rows exist for every cross-layer state-propagation claim** — this is a hard requirement; a single row against a propagation claim is incomplete
+- **Every negative-test row has a paired positive-control row with shared `pair_id`** — this is a hard requirement
+- **Every LLM-behavioral claim (tool-use, refusal, citation, policy-conformance) is flagged in the matrix header for Phase 4.5 live-confirmation dispatch** — these claims cannot be answered by mocked clusters alone
 - Reference real system data by role (e.g., "the first trip in the list") not hardcoded IDs
 - If a requirement cannot produce a testable matrix row, add Method: Analysis row
 
@@ -196,6 +299,13 @@ Emit the following as the **final content** of your response:
   - risk_areas_covered: true
   - user_directives_covered: true   ← required field; false is a blocking error for the Conductor
   - user_focus_areas_covered: true
+  - output_conformance_invariants_covered: true  ← required when spec has OUTPUT-DIST-N entries; false is a blocking error
+  - state_propagation_three_layer_complete: true  ← required when spec contains cross-layer state-propagation claims; false is a blocking error
+  - negative_tests_paired_with_positive_controls: true  ← required when matrix contains any negative-test row; false is a blocking error
+- llm_behavioral_claims:  ← required field; non-empty list triggers Phase 4.5 in the Conductor
+  - claim_id: SP-1
+    claim_text: <verbatim from spec>
+    live_row_target: <TAP event name the live row will assert on>
 - matrix_path: <absolute path>
 ```
 

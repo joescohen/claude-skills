@@ -34,8 +34,9 @@ presenting. Frame findings in terms of user impact, not technical detail.
 ## Architecture Overview
 
 ```
-User → Conductor (you) → Spec Agent → [Gate 1] → Matrix Agent → [Gate 2]
-     → Executor Agents (parallel) → [Gate 3] → Reporter Agent → [Gate 4] → User
+User → Conductor (you) → [Gate -1: Runtime Precondition Probe] → Spec Agent → [Gate 1]
+     → Matrix Agent → [Gate 2] → Executor Agents (parallel) → [Gate 3]
+     → Reporter Agent → [Gate 4] → User
 ```
 
 Full protocol defined in: `/Users/jsc6121/.claude/skills/system-validation/checkpoint-contract.md`
@@ -100,6 +101,92 @@ If no explicit directives were given, skip this line.
 
 This costs one sentence. Skipping it risks the entire pipeline silently ignoring the
 user's stated requirements — as happened when "mobile" was stated twice and not tested.
+
+---
+
+## Gate -1: Runtime Precondition Probe
+
+**Run this immediately after building the pre-flight context object and before dispatching any agent.**
+
+**Step 0 — Classify `system_type` (do this first, before any probing):**
+
+Read the codebase to determine which execution pipeline to use downstream:
+
+| `system_type` | Indicators |
+|---|---|
+| `web_ui` | HTML entry point, React/Vue/Svelte/Angular files, `pages/` or `app/` directory, browser router |
+| `cli` | `bin/`, `cli/` entry point, no `pages/` directory, command/subcommand structure |
+| `api` | REST/GraphQL route handlers, no rendered HTML, HTTP server entry |
+
+Record `system_type` in your context object. **Pass it explicitly to every downstream agent** (spec, matrix, executor). It controls reading sources, row methods, and execution strategy throughout the pipeline.
+
+If unclear, default to `web_ui` but note the ambiguity.
+
+---
+
+**Step 1 — Read runtime requirements from the codebase:**
+- `package.json` → `engines.node` (required Node version)
+- `.env.example` or the `.env` loading block in the CLI entry point → required env vars
+
+**Step 2 — Probe the live instance:**
+
+| `system_type` | Probe |
+|---|---|
+| `web_ui` | HTTP GET to `system_url/health` or `system_url` — expect HTTP 200 |
+| `cli` | Run the entry point with `--help` or `--version` — expect exit code 0 and usage output |
+| `api` | HTTP GET to a lightweight endpoint (health, list, version) — expect HTTP 200 |
+
+**Step 3 — Compare and decide:**
+
+| Check | Pass | Fail |
+|-------|------|------|
+| Node version | `major >= required` | Halt with exact version mismatch |
+| Required env vars | All keys present in running process | Halt naming the missing var |
+| System responds | HTTP 200 / exit code 0 | Halt with connection or invocation error |
+
+If **any check fails**: halt immediately. Do NOT dispatch the Spec Agent. Report to the user in one sentence: what failed, what was expected, what was found.
+
+```
+[Gate -1 BLOCKED] Node 18 detected, ≥22 required.
+Start the server with: nvm use 22 && pnpm sepal serve
+```
+
+**Step 4 — Observability probe (`cli` and `api` systems only):**
+
+Before dispatching the Spec Agent, check whether key pipeline stages emit structured logs on the paths under test:
+
+1. Read 1–2 pipeline stage modules (entry point → first substantive processing function). Look for structured log calls (`pino`, `winston`, `console.log` with JSON objects) at stage boundaries.
+2. **If logging is absent on key paths:**
+   - Set `logging_gap: true` in your context object
+   - Add to your pre-dispatch acknowledgment: "I will add minimal structured logging to [module] before testing."
+   - Add one log line per key stage boundary with decision fields (e.g. `doc_type`, `confidence`, `routing_decision`, exit codes, error class) **before dispatching the Spec Agent**
+   - Run the smoke command and verify the log lines appear
+3. **If logging is present:** note which fields are emitted and record them in your context object as `observable_fields`. Pass this to executor agents — they will parse these fields as row evidence.
+
+**Step 5 — Capture-mechanism smoke test (MANDATORY for `cli` and `api`):**
+
+Observability that exists in code is not the same as observability that reaches the test. Loggers like Pino write through SonicBoom directly to a file descriptor and bypass `process.stdout.write` shims; Winston transports may be configured to write to files only; structured fields may be stripped by a serializer mid-flight. Trusting the capture path without proof is the single most common reason a validation run produces false PASS or opaque FAIL.
+
+Before dispatching the Spec Agent, prove the capture path end-to-end:
+
+1. Identify the capture mechanism the executor will use (stdout shim, log file tail, OTLP collector, structured-event subscriber, etc.). Record it in your context object as `capture_mechanism`.
+2. Emit a known sentinel event through the same logger that production code uses — same module, same level, same serializer — with a unique payload like `{ "sv_smoke": "<run-id>", "ts": "<iso>" }`.
+3. Capture using the exact path the test suite will use.
+4. Confirm the sentinel appears in the captured stream within 2 seconds, with the payload intact.
+
+**If the sentinel does not appear or the payload is mangled:**
+- Halt. Do not dispatch any agent.
+- Report to the user in one sentence: what capture mechanism was attempted, where the sentinel was emitted, and what the captured stream actually contained.
+- Set `capture_mechanism_proven: false`. Until the capture path is fixed and a re-probe passes, the entire run is `INCONCLUSIVE` — not PASS, not FAIL. Negative-case rows that "pass" against a blind capture are vacuous; positive-case rows that "fail" are unattributable.
+
+**If the sentinel arrives intact:**
+- Set `capture_mechanism_proven: true` and the payload it captured as `capture_proof_payload`. Pass both to every downstream agent. Executors and the reporter cite this proof when emitting their final verdicts.
+
+This step is mandatory for `cli` and `api` systems. Evidence without observability cannot distinguish "works silently" from "broken silently"; a proven capture mechanism is what makes the difference between "no event captured" meaning "behavior did not occur" versus "instrumentation was blind."
+
+If **all checks pass**: proceed to Pre-Dispatch Acknowledgment → Spec Agent.
+
+**Why this gate exists:** An invalid environment makes every downstream test row meaningless. Catching it here saves the cost of spec + matrix + executor dispatch and surfaces the root cause immediately rather than as a flood of blocked executor rows.
 
 ---
 
@@ -195,8 +282,20 @@ Wait for MATRIX_COMPLETE. Parse it:
 - Extract: total_rows, clusters, coverage_check, matrix_path
 
 **Coverage gate:**
-- If `user_directives_covered: false` → this is a blocking error. Do not proceed.
-  Add the missing rows yourself and re-verify coverage before dispatch.
+- If `user_directives_covered: false` → blocking error. Add missing rows yourself; re-verify before dispatch.
+- If `output_conformance_invariants_covered: false` AND spec has OUTPUT-DIST-N entries → blocking error.
+  Add the OC cluster rows yourself (VM-OC-01 through VM-OC-03 per invariant) and re-verify before dispatch.
+  Do NOT proceed without output-conformance coverage when the spec defines distribution invariants.
+- If `state_propagation_three_layer_complete: false` AND the spec contains any cross-layer state-propagation
+  claim → blocking error. A single-row check on a propagation claim cannot localize which layer broke. Add
+  the missing W/B/O rows yourself with shared correlation_id, re-verify, then proceed.
+- If `negative_tests_paired_with_positive_controls: false` → blocking error. Unpaired negative tests produce
+  vacuous PASS verdicts when the capture mechanism is blind. Add the positive control rows yourself with a
+  shared `pair_id`, re-verify, then proceed.
+- Record `llm_behavioral_claims` from MATRIX_COMPLETE in your context object. If the list is non-empty,
+  Phase 4.5 is mandatory after Gate 3. If the list is empty but the spec contains tool-use, refusal, or
+  policy-conformance claims that should have surfaced, re-dispatch the matrix agent rather than skipping
+  Phase 4.5.
 - If `all_t1_reqs_covered: false` AND the gap is in a user-flagged area → ask the user before proceeding
 - If `all_t1_reqs_covered: false` AND the gap is NOT user-flagged → add rows yourself, note it, proceed
 - If all checks pass → proceed to executor dispatch
@@ -237,6 +336,78 @@ Default decision: continue unless the finding indicates data corruption, auth fa
 or a state that makes all remaining rows meaningless.
 
 Wait for ALL executor agents to emit CLUSTER_COMPLETE before proceeding to Gate 3.
+
+---
+
+## Gate 3 → Phase 4.5: Live Behavioral Confirmation (gated)
+
+**This phase is mandatory when the spec contains LLM-behavioral claims; skipped otherwise.**
+
+A mocked or fixture-driven test can prove that a code path is reachable and produces the
+expected shape when forced. It cannot prove that a real model will *elect* to take the path
+in production. When the spec under test includes any claim of the form "the model invokes
+tool X when condition Y" or "the model produces output of shape Z under conditions W", the
+mocked clusters answer the wrong question. Tool-election, refusal, citation, formatting,
+and policy-conformance are properties of the runtime model, not of the surrounding code,
+and only a live run with real TAP capture can confirm them.
+
+**Trigger:** Inspect the SPEC_COMPLETE output. If `tier1_reqs` or `risk_areas` contain any
+of these phrases or their semantic equivalents — "tool invocation", "tool use", "model
+calls", "model elects", "agent decides", "model refuses", "policy conformance", "citation",
+"grounded response", "fabrication", "hallucination" — Phase 4.5 fires. Record
+`llm_behavioral_claims: [list]` in your context object. If none match, skip directly to
+Gate 3 → Gate 4.
+
+**Pre-conditions (do not enter Phase 4.5 unless ALL are true):**
+
+- `capture_mechanism_proven: true` from Gate -1 Step 5
+- All mocked CLUSTER_COMPLETE outputs returned PASS or non-blocking findings
+- At least one positive control row in the matrix paired with each negative row
+
+If any pre-condition fails, do not dispatch a live run. Report to the user that the
+LLM-behavioral claim is `UNVERIFIED` and explain which pre-condition blocked the live phase.
+A verification activity that emits PASS on an LLM-behavioral claim without satisfying these
+pre-conditions is structurally invalid — it is the false-PASS pattern from learning case
+`2026-05-12-sepal-trace-to-instrumentation-blindness`.
+
+**Live row design:**
+
+Each `llm_behavioral_claim` produces ONE live row. Constrain it aggressively:
+
+```
+live_row:
+  claim: <exact claim text from spec>
+  model: <cheapest model that demonstrably exercises the path — usually Haiku>
+  input: <smallest realistic input that triggers the conditional under test>
+  capture_target: <which TAP event name proves invocation, e.g. "tool:invoked",
+                   "citation:emitted", "refusal:emitted">
+  pass_criterion: >
+    The named TAP event MUST appear in the live capture stream with a payload
+    that matches the claim's observable shape. Absence of the event is FAIL.
+  fail_handling: >
+    On FAIL, the claim is recorded as "BEHAVIOR_NOT_OBSERVED — model did not
+    invoke X under Y" with the captured TAP excerpt as evidence. This is not
+    a test infrastructure failure; it is the system property under test.
+```
+
+**Cost discipline:** the live row is a proof artifact, not a stress test. Use the smallest
+viable model, the smallest viable input, and one repetition unless the claim concerns
+determinism (in which case 3 repetitions at minimum). Budget per claim should be under
+$0.10 of API spend; if a claim cannot be exercised under that budget, the claim is too
+broad and must be tightened in the spec before live confirmation is meaningful.
+
+**Dispatch:**
+
+The conductor dispatches the live row(s) directly (not via an executor cluster — the
+parallelism and isolation of clusters are inappropriate for sequential, cost-bounded live
+calls). Capture the live TAP into `<output_path>/live-behavioral/<claim-id>.jsonl` and the
+final verdict into `<output_path>/live-behavioral/<claim-id>.verdict.json`.
+
+**Gate 4 implication:** the reporter receives the live-behavioral verdicts alongside the
+cluster outputs. The overall verdict on each LLM-behavioral claim is the conjunction of
+(a) mocked cluster PASS and (b) live-behavioral row PASS. If (b) is FAIL, the claim is
+FAIL regardless of (a). If (a) is FAIL, the live row was never dispatched and the claim
+is `UNVERIFIED`.
 
 ---
 
