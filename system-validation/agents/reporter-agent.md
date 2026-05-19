@@ -169,17 +169,33 @@ loop between the lessons corpus and live validation results.
 
 **Step 2.7a — Classify each finding against lessons:**
 
-For each finding, check whether its `vm_row` traces to a `[LESSON-DERIVED]` row or
-whether the finding's pattern matches a lesson referenced anywhere in the matrix:
+For each finding in the cluster outputs, read its `lesson_derived` field directly
+(set by the executor — see `executor-agent.md` "Lesson-Derived Row Tag Preservation").
+This is the authoritative join key — do NOT parse `[LESSON-DERIVED: <id>]` strings out
+of `vm_row` IDs or matrix rows; the executor has already extracted the lesson ID and
+written it into the finding record.
 
-- **`prevented`**: The finding's `vm_row` is a `[LESSON-DERIVED]` row, AND the row
-  **passed**. The lesson's probes caught the pattern — the system is protected.
-- **`recurred`**: The finding's `vm_row` is a `[LESSON-DERIVED]` row, AND the row
-  **failed**. The lesson identified a known failure class that is still present.
-- **`novel`**: The finding does not correspond to any `[LESSON-DERIVED]` row and does
-  not match any lesson's `root_cause` pattern. This is a new failure class.
+Classify each finding:
 
-If no `[LESSON-DERIVED]` rows exist in the matrix, classify all findings as `novel`.
+- **`prevented`**: The finding's `lesson_derived` is non-null AND the row referenced by
+  `vm_row` **passed**. The lesson's probes caught the pattern — the system is protected.
+  (When a row passes, the executor typically does not emit a finding; `prevented` cases
+  surface from row-level pass-with-observation entries, or from cross-row correlation
+  where a lesson-derived sibling row passed and a related row failed for an unrelated
+  reason.)
+- **`recurred`**: The finding's `lesson_derived` is non-null AND the row referenced by
+  `vm_row` **failed**. The lesson identified a known failure class that is still present.
+- **`novel`**: The finding's `lesson_derived` is `null`. This is a failure class no
+  retrieved lesson predicted — candidate for a new lesson via Gate 4.5 Step 3.
+
+If `lesson_derived` is missing from a finding (the executor failed to emit the required
+field), fall back to heuristic classification by looking up the finding's `vm_row` in
+the matrix and checking for a `[LESSON-DERIVED: <id>]` substring — but record a
+`lesson_tracking_field_missing: true` warning in the report. With the executor
+contract correctly upheld, this fallback should never fire.
+
+If no findings carry a non-null `lesson_derived` AND no `[LESSON-DERIVED]` rows exist
+in the matrix, classify all findings as `novel`.
 
 **Step 2.7b — Add lesson tracking to the report:**
 

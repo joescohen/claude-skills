@@ -52,8 +52,10 @@ system is at risk for based on the Conductor's retrieval matching.
 - Every retrieved lesson must produce at least one T1 row.
 - Rows are tagged `[LESSON-DERIVED]` in the matrix, analogous to `[USER-DIRECTED]`.
 - Minimum Risk score: 4×4 = 16 (same floor as user-directed rows).
-- The row's `Action` and `Expected Result` come from the lesson's `solution.probes` —
-  these are concrete, pre-validated assertions. Lift them verbatim when possible.
+- The row's `Action` and `Expected Result` come from the lesson's `probes` field
+  (a top-level array on the lesson JSON, NOT nested under `solution`). Each probe is
+  `{id, question, expected}` — lift `question` verbatim into Action and `expected` into
+  Expected Result. These are concrete, pre-validated assertions.
 - The row's `REQ-ID` traces to the most relevant spec requirement or risk area. If no
   spec entry covers the lesson's failure pattern, create a new `RISK-LD-N` risk area
   referencing the lesson ID.

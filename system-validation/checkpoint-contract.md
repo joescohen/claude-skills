@@ -90,6 +90,7 @@ final content in their response, after all other work is complete.
     actual: <what was observed>
     evidence: <screenshot path or inline description>
     reproducible: <true|false>
+    lesson_derived: <lesson_id string or null>  ← required field; set to lesson_id when vm_row has [LESSON-DERIVED: <id>] tag, null otherwise. Reporter Step 2.7 joins on this field — see executor-agent.md "Lesson-Derived Row Tag Preservation".
 - screenshots_taken: <N>
 - execution_time_ms: <N>
 ```

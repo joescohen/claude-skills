@@ -196,7 +196,29 @@ Then continue execution unless the state makes remaining rows meaningless.
   actual: <what was observed — be specific>
   evidence: <screenshot path, or describe what the screenshot shows>
   reproducible: true | false
+  lesson_derived: <lesson_id string or null — see "Lesson-Derived Row Tag Preservation" below>
 ```
+
+### Lesson-Derived Row Tag Preservation
+
+When a matrix row carries a `[LESSON-DERIVED: <lesson_id>]` tag (set by matrix-agent Step 1.5), the executor MUST preserve the tag in every finding record produced from that row. The cluster-output schema includes a `lesson_derived` field on each finding:
+
+```json
+{
+  "finding_id": "F-...",
+  "row_id": "VM-...",
+  "verdict": "PASS|FAIL|INCONCLUSIVE",
+  "evidence": "...",
+  "lesson_derived": "lesson-negative-tests-need-paired-positive-controls"  // or null
+}
+```
+
+Rules:
+1. If the source row has `[LESSON-DERIVED: <id>]`, set `lesson_derived` to the lesson ID (without the surrounding `[LESSON-DERIVED: ... ]` brackets).
+2. If the source row is NOT lesson-derived, set `lesson_derived: null` explicitly (not omitted, not undefined).
+3. Do NOT modify the tag content. Pass it through verbatim from the matrix row.
+
+**Why this matters:** Reporter Step 2.7 classifies findings as `prevented` / `recurred` / `novel` by joining cluster-output findings against the matrix's `[LESSON-DERIVED]` rows on `lesson_derived` field. Without the tag preserved in the finding record, the join is impossible and the reporter must fall back to heuristic classification, which loses lesson-attribution provenance.
 
 **Severity guide:**
 - **critical**: core flow blocked, data corruption, security failure, blank page
@@ -428,6 +450,7 @@ the feature sweep and any layout invariant checks from Phase 2.
     actual: "Agent Interfaces" label clipped; horizontal scroll introduced
     evidence: screenshot saved to /tmp/system-validation/FIND-A-001.png
     reproducible: true
+    lesson_derived: null  ← set to lesson_id string when vm_row has [LESSON-DERIVED: <id>] tag; null otherwise (required field, never omitted)
 - screenshots_taken: <N>
 - execution_time_ms: <N>
 ```

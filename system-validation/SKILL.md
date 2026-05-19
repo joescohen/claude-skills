@@ -87,38 +87,38 @@ output_path: /tmp/system-validation/
   passed to every agent as a separate required field. They cannot be merged into user_concerns.
 - `user_concerns` = soft signals that increase risk scores. They feed STAMP analysis.
 
-**Step 4 — Retrieve lessons from the lessons corpus:**
+**Step 4: Retrieve lessons from the CEI corpus**
 
-The lessons corpus at `~/.claude/skills/system-validation/lessons/` contains structured
-records of past validation failures — root causes, detection gaps, and concrete probes
-that prevent recurrence. Retrieving relevant lessons before dispatch is the single
-highest-leverage step for preventing known-class failures.
+The CEI lesson corpus contains structured records of past validation failures — root
+causes, detection gaps, and concrete probes that prevent recurrence. Retrieving
+relevant lessons before dispatch is the single highest-leverage step for preventing
+known-class failures. Lessons live in CEI (not in this skill); SV reads them via the
+resolver chain below.
 
-1. Read all `.md` files in `~/.claude/skills/system-validation/lessons/`.
-2. For each lesson with `status: active`, check whether `applies_when` matches the
-   current context:
-   - `components`: does any tag overlap with the system's tech stack, pipeline stages,
-     or component types identified in Steps 1–3?
-   - `signals`: does any signal match patterns found in `recently_changed`, `known_issues`,
-     or the codebase reading?
-   - `preconditions`: are the stated preconditions true for this system?
-   - `do_not_apply_if`: if ANY blocker matches, skip this lesson entirely — this prevents
-     negative transfer from lessons applied to the wrong context.
-3. Rank matching lessons by: (number of signal overlaps) × confidence score.
-4. Take the **top 3** lessons. Never inject more than 3 per run — retrieval poisoning
-   from over-injection is a real risk.
-5. Add to your context object:
+1. Resolve the CEI repository root. Resolution order (do NOT hardcode any path):
+   a. `$CEI_REGISTRY_ROOT` environment variable, if set
+   b. Shell out: run `cei root` via Bash tool and parse stdout (returns absolute path; exit 0 on success). Capture stderr separately.
+   c. If both fail: emit a pre-flight warning ("CEI lesson retrieval skipped: CEI_REGISTRY_ROOT unset and `cei root` failed") and proceed with `retrieved_lessons: []`. Do NOT hard-fail the validation run — lesson retrieval is enrichment, not a precondition.
 
-```
-retrieved_lessons:
-  - id: <lesson id>
-    relevance_reason: <which signals matched and why>
-    probes: [<list of concrete probes from the lesson's solution section>]
-  - ...
-```
+2. Read `<CEI_REGISTRY_ROOT>/learning/lessons/active/*.json` (JSON files, not Markdown).
 
-If the lessons directory is empty or no lessons match, set `retrieved_lessons: []` and
-proceed. This step is mandatory but an empty result is valid.
+3. Filter to SV-consumable lessons. A lesson is SV-consumable iff:
+   - `applies_when` is present and non-empty, AND
+   - `probes` is present and contains ≥1 entry, AND
+   - At least one of `applies_when.components` or `applies_when.signals` is non-empty
+
+4. Of SV-consumable lessons, filter by relevance to the current pre-flight context:
+   - Match on `applies_when.components` — intersect with the components named in user_directives + spec context
+   - Match on `applies_when.signals` — intersect with detected signals from CLAUDE.md/README/recent commits
+   - Apply `do_not_apply_if` as a negative filter (if any item matches the codebase, exclude the lesson)
+
+5. Rank surviving lessons by `(reinforcement_count || 1) × (confidence || 0.6)` descending. Take the top 3.
+
+6. Populate the context-object field `retrieved_lessons` with the top-3 lesson objects (full JSON records). Downstream agents (Matrix, Spec, Reporter) consume this field as documented in the prompt-include blocks below.
+
+**Cap rationale:** 3 lessons max prevents retrieval poisoning of downstream prompts. If more than 3 lessons match, the highest-ranked 3 win.
+
+**Format note:** lesson body sections (Problem/Trigger/Root Cause/Solution/etc.) live in the case file referenced by `source_refs[]`, not in the lesson JSON itself. Downstream agents should pull narrative context from the case file if needed for full understanding.
 
 ---
 
@@ -513,18 +513,54 @@ Add one line to the Gate 4 synthesis per correlated lesson:
 
 > "Lessons applied: [N] retrieved, [N] prevented recurrence, [N] recurred despite prior knowledge, [N] novel findings."
 
-**Step 3 — Draft lesson stubs for novel high-severity findings:**
+**Gate 4.5 Step 3: Draft candidate lessons for novel high-severity findings**
 
-For each novel finding with severity `critical` or `high`, draft a lesson stub file at
-`~/.claude/skills/system-validation/lessons/` using the schema from the seed file. Set
-`status: draft` and `confidence: 0.6`. Present the stub paths to the user:
+For each finding classified as `novel` with severity `high` or `critical`:
 
-> "I've drafted [N] lesson stub(s) from novel findings. Review and promote to `status: active`
-> when validated:
-> - `lessons/<date>-<slug>.md` — [one-line description]"
+1. Resolve `<CEI_REGISTRY_ROOT>` using the same resolver chain as Step 4 of pre-flight (env var → `cei root` → skip with warning).
 
-Do not auto-promote to active — the user must review and confirm. Lessons with `status: draft`
-are never retrieved by Step 4 of the pre-flight.
+2. If CEI is reachable, write a candidate JSON to `<CEI_REGISTRY_ROOT>/learning/lessons/candidates/<ISO-timestamp>-sv-novel-<finding-id>.json` with this shape:
+
+```json
+{
+  "id": "lesson-sv-novel-<finding-id>",
+  "title": "<one-line finding summary>",
+  "scope": "global",
+  "source_type": "system_validation_run",
+  "source_refs": [],
+  "lesson": "<3-5 sentence summary of the finding and proposed prevention>",
+  "applies_to": ["<inferred-targets>"],
+  "control_surfaces": ["validation_matrix_spec"],
+  "trigger_signal": "<signal that should trigger retrieval>",
+  "status": "draft",
+  "verification": "<how to reproduce/verify>",
+  "last_relevant": "<current ISO timestamp>",
+  "reinforcement_count": 1,
+  "applies_when": {
+    "components": ["<components from finding context>"],
+    "signals": ["<signals from finding context>"],
+    "preconditions": []
+  },
+  "do_not_apply_if": [],
+  "probes": [
+    { "id": "probe-1", "question": "<the question this lesson would ask>", "expected": "<expected answer>" }
+  ],
+  "tags": ["sv-novel"],
+  "severity": "<high|critical>",
+  "provenance": {
+    "source_session_id": "<current SV run id>",
+    "source_evidence": ["<finding-id>", "<matrix-row-ids>"],
+    "trigger": "novel_finding_high_severity",
+    "hook": "system-validation Gate 4.5",
+    "source_type": "system_validation_run",
+    "author": "system-validation skill"
+  }
+}
+```
+
+3. The candidate enters CEI's standard promotion ladder. Do NOT promote it locally. The user reviews via `cei review list` and `cei review accept <id>`.
+
+4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json` and emit a Gate 4.5 warning naming the fallback path. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable.
 
 **Step 4 — Archive stale lessons (opportunistic):**
 
