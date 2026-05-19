@@ -39,8 +39,8 @@ User → Conductor (you) → [Gate -1: Runtime Precondition Probe] → Spec Agen
      → Reporter Agent → [Gate 4] → User
 ```
 
-Full protocol defined in: `/Users/jsc6121/.claude/skills/system-validation/checkpoint-contract.md`
-Agent instructions in: `/Users/jsc6121/.claude/skills/system-validation/agents/`
+Full protocol defined in: `~/.claude/skills/system-validation/checkpoint-contract.md`
+Agent instructions in: `~/.claude/skills/system-validation/agents/`
 
 ---
 
@@ -86,6 +86,39 @@ output_path: /tmp/system-validation/
 - `user_directives` = explicit test requirements. They generate mandatory T1 rows. They are
   passed to every agent as a separate required field. They cannot be merged into user_concerns.
 - `user_concerns` = soft signals that increase risk scores. They feed STAMP analysis.
+
+**Step 4 — Retrieve lessons from the lessons corpus:**
+
+The lessons corpus at `~/.claude/skills/system-validation/lessons/` contains structured
+records of past validation failures — root causes, detection gaps, and concrete probes
+that prevent recurrence. Retrieving relevant lessons before dispatch is the single
+highest-leverage step for preventing known-class failures.
+
+1. Read all `.md` files in `~/.claude/skills/system-validation/lessons/`.
+2. For each lesson with `status: active`, check whether `applies_when` matches the
+   current context:
+   - `components`: does any tag overlap with the system's tech stack, pipeline stages,
+     or component types identified in Steps 1–3?
+   - `signals`: does any signal match patterns found in `recently_changed`, `known_issues`,
+     or the codebase reading?
+   - `preconditions`: are the stated preconditions true for this system?
+   - `do_not_apply_if`: if ANY blocker matches, skip this lesson entirely — this prevents
+     negative transfer from lessons applied to the wrong context.
+3. Rank matching lessons by: (number of signal overlaps) × confidence score.
+4. Take the **top 3** lessons. Never inject more than 3 per run — retrieval poisoning
+   from over-injection is a real risk.
+5. Add to your context object:
+
+```
+retrieved_lessons:
+  - id: <lesson id>
+    relevance_reason: <which signals matched and why>
+    probes: [<list of concrete probes from the lesson's solution section>]
+  - ...
+```
+
+If the lessons directory is empty or no lessons match, set `retrieved_lessons: []` and
+proceed. This step is mandatory but an empty result is valid.
 
 ---
 
@@ -195,7 +228,7 @@ If **all checks pass**: proceed to Pre-Dispatch Acknowledgment → Spec Agent.
 Dispatch the Spec Agent with your pre-flight context:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/spec-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/spec-agent.md
 Model: haiku
 Prompt must include:
   - system_description
@@ -204,6 +237,7 @@ Prompt must include:
   - user_concerns    ← soft context for STAMP weighting
   - known_issues (so the spec agent flags these as risk areas)
   - recently_changed (so recently changed areas get higher risk scores)
+  - retrieved_lessons ← from Step 4 — label "RETRIEVED LESSONS (use in Step 1b)"
   - output_path
   - Absolute path to the codebase root
 ```
@@ -268,11 +302,12 @@ Wait for the user's response (unless skipped). Collect:
 Dispatch the Matrix Agent with calibration input:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/matrix-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/matrix-agent.md
 Model: haiku
 Prompt must include:
   - specification_path (from SPEC_COMPLETE)
   - user_directives  ← MANDATORY FIELD — these generate required rows, not optional ones
+  - retrieved_lessons ← MANDATORY FIELD — these generate [LESSON-DERIVED] rows (see matrix-agent.md Step 1.5)
   - calibration_answers (from user)
   - conductor_context (known_issues + user_concerns from pre-flight)
   - output_path
@@ -282,6 +317,9 @@ Wait for MATRIX_COMPLETE. Parse it:
 - Extract: total_rows, clusters, coverage_check, matrix_path
 
 **Coverage gate:**
+- If `lessons_covered: false` AND `retrieved_lessons` was non-empty → blocking error. Each retrieved
+  lesson must have at least one `[LESSON-DERIVED]` row in the matrix. Add missing rows yourself using
+  the lesson's `probes` field; re-verify before dispatch.
 - If `user_directives_covered: false` → blocking error. Add missing rows yourself; re-verify before dispatch.
 - If `output_conformance_invariants_covered: false` AND spec has OUTPUT-DIST-N entries → blocking error.
   Add the OC cluster rows yourself (VM-OC-01 through VM-OC-03 per invariant) and re-verify before dispatch.
@@ -312,7 +350,7 @@ Tell the user concisely:
 Dispatch all clusters simultaneously. One executor agent per cluster:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/executor-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/executor-agent.md
 Model: haiku
 Run ALL clusters in parallel (one Agent dispatch per cluster)
 Each prompt must include:
@@ -416,7 +454,7 @@ is `UNVERIFIED`.
 Collect all CLUSTER_COMPLETE outputs. Dispatch the Reporter:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/reporter-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/reporter-agent.md
 Model: haiku
 Prompt must include:
   - cluster_outputs: full text of ALL CLUSTER_COMPLETE checkpoints, concatenated
@@ -450,6 +488,51 @@ Do not relay the report summary verbatim. Synthesize in terms of what matters to
 
 If user directives were given, confirm each one was tested:
 > "On your specific requests: [directive] — [pass/fail/what was found]."
+
+---
+
+## Gate 4.5: Lesson Feedback Loop
+
+After synthesizing findings for the user, close the loop between this run's findings and
+the lessons corpus. This is what makes the corpus compound across runs instead of going stale.
+
+**Step 1 — Correlate findings against retrieved lessons:**
+
+For each finding in the REPORT_COMPLETE output, check whether it matches a retrieved lesson:
+
+- **`prevented`**: The finding's pattern matches a lesson, AND the test caught it (the lesson
+  worked — its probes surfaced the issue before it reached production). Log which lesson
+  prevented which finding.
+- **`recurred`**: The finding's root cause matches a lesson's `root_cause`, AND the fix from
+  the lesson was not applied. The lesson exists but the system didn't act on it.
+- **`novel`**: The finding does not match any retrieved lesson. This is a new failure class.
+
+**Step 2 — Report lesson status to user:**
+
+Add one line to the Gate 4 synthesis per correlated lesson:
+
+> "Lessons applied: [N] retrieved, [N] prevented recurrence, [N] recurred despite prior knowledge, [N] novel findings."
+
+**Step 3 — Draft lesson stubs for novel high-severity findings:**
+
+For each novel finding with severity `critical` or `high`, draft a lesson stub file at
+`~/.claude/skills/system-validation/lessons/` using the schema from the seed file. Set
+`status: draft` and `confidence: 0.6`. Present the stub paths to the user:
+
+> "I've drafted [N] lesson stub(s) from novel findings. Review and promote to `status: active`
+> when validated:
+> - `lessons/<date>-<slug>.md` — [one-line description]"
+
+Do not auto-promote to active — the user must review and confirm. Lessons with `status: draft`
+are never retrieved by Step 4 of the pre-flight.
+
+**Step 4 — Archive stale lessons (opportunistic):**
+
+If any retrieved lesson's `date` is older than 90 days AND it was not cited as `prevented`
+or `recurred` in this run, note it for the user:
+
+> "Lesson `<id>` is >90 days old and was not relevant this run. Consider archiving it
+> (`status: archived`) if the underlying issue has been resolved."
 
 ---
 

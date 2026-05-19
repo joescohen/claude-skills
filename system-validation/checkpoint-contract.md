@@ -57,6 +57,9 @@ final content in their response, after all other work is complete.
   - all_t1_reqs_covered: true
   - risk_areas_covered: true
   - user_focus_areas_covered: true
+  - lessons_covered: true          ← required when retrieved_lessons non-empty; false blocks dispatch
+  - lessons_retrieved:             ← lesson IDs that generated [LESSON-DERIVED] rows
+    - <lesson_id>
 - matrix_path: <absolute path to validation-matrix.md>
 ```
 
@@ -113,6 +116,14 @@ final content in their response, after all other work is complete.
 - top_issues:
   - FIND-001
   - FIND-002
+- lesson_tracking:
+    lessons_retrieved: <N>
+    prevented: <N>
+    recurred: <N>
+    novel: <N>
+    novel_high_severity:
+      - finding_id: FIND-NNN
+        title: <short title>
 - report_path: <absolute path to audit-report.md>
 ```
 
