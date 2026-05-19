@@ -98,7 +98,7 @@ resolver chain below.
 1. Resolve the CEI repository root. Resolution order (do NOT hardcode any path):
    a. `$CEI_REGISTRY_ROOT` environment variable, if set
    b. Shell out: run `cei root` via Bash tool and parse stdout (returns absolute path; exit 0 on success). Capture stderr separately.
-   c. If both fail: emit a pre-flight warning ("CEI lesson retrieval skipped: CEI_REGISTRY_ROOT unset and `cei root` failed") and proceed with `retrieved_lessons: []`. Do NOT hard-fail the validation run — lesson retrieval is enrichment, not a precondition.
+   c. If both fail: emit a pre-flight warning and proceed with `retrieved_lessons: []`. Do NOT hard-fail the validation run — lesson retrieval is enrichment, not a precondition. Add this exact line to your pre-dispatch acknowledgment so the user knows lesson enrichment was skipped: `[CEI lesson retrieval unavailable — proceeding without retrieved_lessons. Reason: <env-unset | cei-root-failed>]`
 
 2. Read `<CEI_REGISTRY_ROOT>/learning/lessons/active/*.json` (JSON files, not Markdown).
 
@@ -110,6 +110,7 @@ resolver chain below.
 4. Of SV-consumable lessons, filter by relevance to the current pre-flight context:
    - Match on `applies_when.components` — intersect with the components named in user_directives + spec context
    - Match on `applies_when.signals` — intersect with detected signals from CLAUDE.md/README/recent commits
+   - For each surviving lesson, check that ALL `applies_when.preconditions` are true for the current pre-flight context (e.g., if a precondition says "React project", the pre-flight context must include React). Drop the lesson if any precondition is false.
    - Apply `do_not_apply_if` as a negative filter (if any item matches the codebase, exclude the lesson)
 
 5. Rank surviving lessons by `(reinforcement_count || 1) × (confidence || 0.6)` descending. Take the top 3.
@@ -496,16 +497,17 @@ If user directives were given, confirm each one was tested:
 After synthesizing findings for the user, close the loop between this run's findings and
 the lessons corpus. This is what makes the corpus compound across runs instead of going stale.
 
-**Step 1 — Correlate findings against retrieved lessons:**
+**Gate 4.5 Step 1: Read lesson_tracking from the reporter**
 
-For each finding in the REPORT_COMPLETE output, check whether it matches a retrieved lesson:
+The reporter-agent (Step 2.7a) is the authoritative classifier. After REPORT_COMPLETE returns, read the `lesson_tracking` block from the reporter's checkpoint output. Do NOT re-classify findings; the reporter has already joined them against `[LESSON-DERIVED]` matrix rows via `finding.lesson_derived`.
 
-- **`prevented`**: The finding's pattern matches a lesson, AND the test caught it (the lesson
-  worked — its probes surfaced the issue before it reached production). Log which lesson
-  prevented which finding.
-- **`recurred`**: The finding's root cause matches a lesson's `root_cause`, AND the fix from
-  the lesson was not applied. The lesson exists but the system didn't act on it.
-- **`novel`**: The finding does not match any retrieved lesson. This is a new failure class.
+The `lesson_tracking` block contains:
+- `prevented`: findings that match a lesson AND PASSed (lesson worked)
+- `recurred`: findings that match a lesson AND FAILed (lesson exists but didn't prevent it)
+- `novel`: findings with no `lesson_derived` (no lesson covers this finding)
+- `novel_high_severity`: subset of `novel` with severity high|critical (these become Gate 4.5 Step 3 candidates)
+
+Proceed to Step 2 (stale-lesson detection) using `lesson_tracking.novel_high_severity` as the input for Step 3.
 
 **Step 2 — Report lesson status to user:**
 
@@ -527,7 +529,7 @@ For each finding classified as `novel` with severity `high` or `critical`:
   "title": "<one-line finding summary>",
   "scope": "global",
   "source_type": "system_validation_run",
-  "source_refs": [],
+  "source_refs": ["<finding-id>", "<matrix-row-ids>"],
   "lesson": "<3-5 sentence summary of the finding and proposed prevention>",
   "applies_to": ["<inferred-targets>"],
   "control_surfaces": ["validation_matrix_spec"],
@@ -548,19 +550,21 @@ For each finding classified as `novel` with severity `high` or `critical`:
   "tags": ["sv-novel"],
   "severity": "<high|critical>",
   "provenance": {
-    "source_session_id": "<current SV run id>",
-    "source_evidence": ["<finding-id>", "<matrix-row-ids>"],
     "trigger": "novel_finding_high_severity",
+    "session_id": "<SV run UUID, or synthetic_<uuid> if SV doesn't track one>",
     "hook": "system-validation Gate 4.5",
-    "source_type": "system_validation_run",
-    "author": "system-validation skill"
+    "timestamp": "<current ISO timestamp>",
+    "agent_authored": true,
+    "distill_run_id": "sv-novel-<run-id>"
   }
 }
 ```
 
+The `provenance` block uses CEI's canonical `REQUIRED_PROVENANCE_FIELDS` (from `src/auto/stamp-provenance.js`): `trigger`, `session_id`, `hook`, `timestamp`, `agent_authored`, `distill_run_id`. `cei verify` rejects any candidate missing or having empty values for these fields with `CANDIDATE_DRIFT`. SV-specific audit info (the finding ID, matrix-row IDs) lives in the top-level `source_refs[]` field, which already exists on every active CEI lesson — see `learning/lessons/active/lesson-negative-tests-need-paired-positive-controls.json` for the canonical shape.
+
 3. The candidate enters CEI's standard promotion ladder. Do NOT promote it locally. The user reviews via `cei review list` and `cei review accept <id>`.
 
-4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json` and emit a Gate 4.5 warning naming the fallback path. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable.
+4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json`. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable. Surface the fallback path in the final report's "Skill Health" or equivalent section so the user sees it after the run: `[Gate 4.5 fallback fired: novel-finding stub written to ~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json instead of CEI candidates dir. Reason: <env-unset | cei-root-failed>. Manually move to CEI candidates/ when CEI becomes reachable.]`
 
 **Step 4 — Archive stale lessons (opportunistic):**
 
