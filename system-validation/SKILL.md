@@ -534,7 +534,7 @@ For each finding classified as `novel` with severity `high` or `critical`:
   "applies_to": ["<inferred-targets>"],
   "control_surfaces": ["validation_matrix_spec"],
   "trigger_signal": "<signal that should trigger retrieval>",
-  "status": "draft",
+  "status": "proposed",
   "verification": "<how to reproduce/verify>",
   "last_relevant": "<current ISO timestamp>",
   "reinforcement_count": 1,
