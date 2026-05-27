@@ -130,6 +130,41 @@ final content in their response, after all other work is complete.
 
 ---
 
+## Gate 5: ADVERSARIAL_COMPLETE
+**Emitted by:** Adversarial Reviewer Agent (final stage)
+**Consumed by:** Conductor, before the Gate 5 user-facing synthesis
+
+Self-contained to system-validation — no external-system dependency. The reviewer receives a
+blinded packet (claims + raw cluster outputs + spec/matrix + artifacts + capture-proof + canaries)
+and never the reporter's narrative or `audit-report.md`.
+
+```
+## CHECKPOINT: ADVERSARIAL_COMPLETE
+- isolation_attested: <true — confirms audit-report.md / conductor narrative were NOT read>
+- canaries:
+    good_survived: <true|false>     # a known-GOOD planted claim must SURVIVE
+    bad_overturned: <true|false|n/a> # a known-BAD planted claim must be OVERTURNED
+    calibration: <ok|recalibrated>   # recalibrated = verdicts were revised after a canary miss
+- verdicts:
+  - claim_id: <id>
+    verdict: <SURVIVES|OVERTURNED|UNPROVEN>
+    severity: <orig> -> <adjusted>
+    evidence: <command+output | file:line | artifact ref>   # REQUIRED for OVERTURNED
+- blocking_findings:        # OVERTURNED on a Tier-1 requirement — conductor must lead with these
+  - claim_id: <id> — <one line>
+- unresolved_disputes:      # HIGH/CRITICAL still UNPROVEN after the single rebuttal — needs a human
+  - claim_id: <id> — <one line>
+- counts: { survives: <N>, overturned: <N>, unproven: <N> }
+- reviewer_incidental_findings:   # new issues spotted while reviewing; kept separate from verdicts
+  - <one line>
+- verdict_path: <absolute path to adversarial-review.md>
+```
+
+Rounds: one pass + at most one rebuttal round on disputed HIGH/CRITICAL claims (hard cap 2). An
+unresolved HIGH/CRITICAL dispute after rebuttal stays UNPROVEN and is flagged for a human.
+
+---
+
 ## Escalation: ESCALATION (mid-execution, any time)
 **Emitted by:** Any Executor Agent when it finds a critical finding  
 **Consumed by:** Conductor immediately (does not wait for CLUSTER_COMPLETE)
