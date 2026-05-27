@@ -107,12 +107,56 @@ atomic claims. Each must be:
 
 Include at least one **negative claim** when the failure mode involves fabrication or false positives.
 
+**Three-layer claim decomposition (mandatory when the definitive question targets a multi-phase
+pipeline).** Output-only rubrics can pass on easy inputs while the architecture silently violates
+the design rationale. A system that produces correct output for the wrong structural reason will
+fail on harder inputs, different distributions, or at scale — but an output-only rubric cannot
+detect this. When the work under test is a multi-phase pipeline or implements an architecture
+grounded in research/planning documents, decompose sub-claims across three layers:
+
+| Layer | What it tests | Rubric question |
+|-------|--------------|-----------------|
+| **Interface contract** | Data flowing *into* each phase has the right shape, provenance, completeness, and exclusions | "What enters this phase? What schema must it have? What must be present? What must be *absent*?" |
+| **Intermediate representation** | Each phase's output is a *structure* with specific relational properties — not just "some output" | "What relational graph / schema / type does this phase produce? What edges/references connect its parts?" |
+| **Output property** | The final assembled output has characteristics that could *only* emerge from the architecture working correctly | "What end-to-end property requires the interface contracts AND IR properties to hold simultaneously?" |
+
+Include at least one sub-claim at each layer. The three layers are complementary:
+- **Interface claims** catch plumbing errors (wrong data in, missing context, contract violations)
+- **IR claims** catch mechanism errors (the phase ran but didn't produce the structural artifact the architecture depends on)
+- **Output claims** catch integration errors (all phases ran correctly in isolation but the assembly doesn't compose)
+
+> Example (multi-pass synthesis pipeline grounded in GraphRAG + CAHM research):
+> - C1 (IR): Pass 1 produces a structural graph — root cause nodes with edges to finding IDs,
+>   a subsystem map, and a theme skeleton — not a prose summary (GraphRAG map phase)
+> - C2 (Interface): Pass 1 receives titles-only input ≤35K tokens, no full descriptions
+>   (model noise reduction per arXiv 2506.16411 Theorem 3.2)
+> - C3 (Interface): Every Pass 2 call receives the full Pass 1 skeleton as context
+>   (CAHM boundary preservation per arXiv 2502.00977)
+> - C4 (Interface): Each Pass 2 call receives full descriptions for only its relevant
+>   finding subset, ≤40 findings per call (focused depth)
+> - C5 (Interface): Pass 3 prompt contains no revision instructions — it re-generates the
+>   executive summary from evidence, not from Pass 2 prose (arXiv 2604.01029)
+> - C6 (Output): ≥80% of subsystem narratives cite findings from ≥2 distinct analyzers
+>   (cross-analyzer synthesis survives chunking)
+> - C7 (Output): Citation coverage ≥75%, zero hallucinated IDs
+> - C8 (Interface, negative): No Pass 2 call can proceed without the Pass 1 skeleton
+>   (falsification test for the task-noise argument)
+
+**Negative claims at interface boundaries.** Beyond fabrication-risk negatives, include at least
+one negative claim per phase boundary when the architecture's correctness depends on data NOT
+flowing through that boundary. These are the falsification tests for the design rationale —
+if the negative claim fails, the architecture has degenerated even though outputs may look fine.
+
+> Examples: "Pass 1 input must NOT contain full finding descriptions" / "No Pass 2 call may
+> proceed without the Pass 1 skeleton" / "Pass 3 must NOT contain 'review' or 'revise' instructions"
+
 **3. The named verification method per sub-claim.** Don't say "tests." Say which test, what TAP
 or log it captures, what canonical store it cross-references. Acceptable methods:
 - Integration test capturing structured TAP events
 - Cross-reference query against a canonical store (chain-of-custody)
 - Live controlled run with captured logs, executed AFTER mocked tests pass
 - File-on-disk diff against expected schema
+- `code-path-static-audit` (for interface contract and IR claims — see checkpoint-contract.md)
 
 **4. The binary verdict format** (mirrors what the verdict-auditor will emit):
 
@@ -123,6 +167,25 @@ Evidence:
   C2 [✅/❌]: ...
 Verdict: DEFINITIVE YES | NOT YET
 ```
+
+**5. Design rationale sources (when the work implements a plan or research-grounded architecture).**
+If the implementation is based on a planning document, research paper, or architectural design, the
+rubric MUST reference these sources. This gives auditors a canonical "what was intended" to verify
+against — not just "what is observable." Without this, auditors can only check that code runs; with
+it, they can check that code *implements the intended mechanism*.
+
+```markdown
+## Design Rationale Sources
+- Plan: <path to implementation plan — e.g., .planning/plans/feature-x.md>
+- Research: <arXiv IDs, paper titles, or paths to research documents grounding the architecture>
+- Key mechanisms: <1-2 sentences naming the architectural innovations the plan relies on>
+```
+
+The `Key mechanisms` field is what prevents the rubric from drifting to output-only claims. It names
+the structural properties the architecture depends on — the intermediate representation that bounds
+task noise, the boundary-preservation strategy that prevents degeneration, the re-generation-over-
+revision choice that prevents error accumulation. Each mechanism should map to at least one interface
+or IR claim in the sub-claims.
 
 **Write `rubric.md` and request acknowledgment:**
 
@@ -135,6 +198,22 @@ and re-confirm.
 **Lock the rubric.** From this point, the rubric is immutable for this loop iteration. Relaxing the
 rubric mid-loop to make YES easier is a failure mode. If the user later wants to change it, restart
 the loop at Phase 1.
+
+**Three-layer coverage gate (before locking).** If the definitive question targets a multi-phase
+pipeline AND a plan or research document exists for the work:
+1. Verify at least one sub-claim is tagged `interface-contract`
+2. Verify at least one sub-claim is tagged `intermediate-representation`
+3. Verify at least one sub-claim is tagged `output-property`
+4. Verify `Design Rationale Sources` is populated with the plan/research path
+5. Verify at least one negative claim exists at an interface boundary
+
+If any of 1–3 are missing, add the missing layer claims before locking. An output-only rubric
+for a multi-phase pipeline is a known failure mode — it passes on easy inputs while the
+architecture silently degenerates. Do not lock until all three layers are covered.
+
+If the definitive question is NOT about a multi-phase pipeline (e.g., "does function X return Y?"),
+the three-layer gate does not apply. Simple rubrics with output-only claims are fine when the work
+is single-phase.
 
 → **Gate 1: RUBRIC_LOCKED** (see contract). Output: `rubric.md`.
 
@@ -150,7 +229,8 @@ Agent dispatch parameters per sub-claim:
   subagent_type: Explore  (read-only)
   description:   "Audit C<n>: <short claim>"
   prompt:        See agents/sub-claim-auditor.md for the prompt template.
-                 Must include: sub_claim_id, sub_claim_text, named_verification_method,
+                 Must include: sub_claim_id, sub_claim_text, sub_claim_layer (if annotated),
+                 named_verification_method, design_rationale_ref (if applicable),
                  codebase_root, session_dir, audit_output_path (session_dir/audit/AUDIT-C<n>.md).
 ```
 
@@ -311,6 +391,9 @@ The user repeating the question is the verdict. Adjust the bar; don't defend the
 | Skipping Phase 1 ("the criterion is obvious") | Without an explicit rubric file, the Phase 5 audit has nothing canonical to check against. The whole loop collapses. |
 | Verdict-auditor accepts a partial verdict ("most sub-claims pass") | Binary. All Cn ✅ → DEFINITIVE YES. Any ❌ or ⚠️ → NOT YET. |
 | Closer modifies `rubric.md` or `delta.md` | These are conductor-owned. Closers write only to their assigned closure file and `evidence/`. |
+| Output-only rubric for a multi-phase pipeline | Passes on easy inputs while the architecture silently degenerates. The three-layer coverage gate exists to catch this — if it fires, add interface and IR claims before locking. |
+| Skipping Design Rationale Sources when a plan exists | Auditors can only verify "does the code run?" without knowing what the architecture *intended*. Design rationale gives auditors a canonical reference for mechanism fidelity, not just functional correctness. |
+| Treating `code-path-static-audit` as sufficient for runtime claims | Static analysis proves code structure, not execution. Interface-contract claims verified statically should be paired with at least one output-property claim verified at runtime to close the gap between "the plumbing is wired" and "the plumbing carries water." |
 
 ---
 

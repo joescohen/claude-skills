@@ -18,11 +18,17 @@ The Conductor provides these in your dispatch prompt:
 
 - `sub_claim_id` — e.g. `C2`
 - `sub_claim_text` — verbatim from `rubric.md`, the atomic claim you are auditing
+- `sub_claim_layer` — one of: `interface-contract`, `intermediate-representation`, `output-property`
+  (may be omitted for simple rubrics)
 - `sub_claim_negation` — what would prove this claim false
 - `named_verification_method` — one of: `integration-test-with-tap`, `canonical-store-xref`,
-  `live-controlled-run`, `file-on-disk-diff`
+  `live-controlled-run`, `file-on-disk-diff`, `code-path-static-audit`
 - `canonical_store_pointer` — if the method involves cross-referencing, where to look (DB table
   name, fixture path, log channel, etc.)
+- `design_rationale_ref` — if applicable: which research mechanism or plan section this claim tests.
+  When present, read the referenced plan/research document to understand *what the architecture
+  intended*, not just what the code currently does. This is the difference between "does this
+  function exist?" and "does this function implement the mechanism the research says is necessary?"
 - `codebase_root` — absolute path to the codebase
 - `session_dir` — `/tmp/rubric-anchored-recursion/<id>/`
 - `audit_output_path` — where to write the audit report (`session_dir/audit/AUDIT-<sub_claim_id>.md`)
@@ -87,6 +93,29 @@ Method-specific recipes:
 - Locate the expected schema or canonical key.
 - Read the artifact on disk; compare against the schema.
 - ✅ if it matches; ❌ with a specific diff if not.
+
+**`code-path-static-audit`:**
+- Read the claim carefully — it asserts that a specific data flow exists (or does not exist)
+  in the implementation code. This is an interface-contract or intermediate-representation claim.
+- **Trace the code path end-to-end.** Start at the entry point the claim names (e.g., "Pass 2
+  dispatch") and follow the data construction: what function builds the input, what arguments are
+  passed, what the prompt assembly includes. Use `Grep` to find call sites, `Read` to follow
+  the chain.
+- **For positive claims** ("X is included in Y"): identify the exact file:line where the claimed
+  data is constructed and passed. If you find it, the evidence pointer is `file:line` + the
+  relevant code snippet. If you cannot find it after searching exhaustively, → ❌ BROKEN.
+- **For negative claims** ("X must NOT appear in Y"): grep for the prohibited data in the
+  relevant code path. If found → ❌ BROKEN with the file:line. If not found after exhaustive
+  search → ✅ WORKS with a list of files searched and the grep commands used.
+- **For schema/shape claims** ("output is a graph with edges of type X"): read the schema
+  definition (Zod, TypeScript type, JSON schema) and verify the structural properties match.
+  The evidence is the schema itself at file:line.
+- Save evidence as `session_dir/evidence/AUDIT-<id>-codepath.md` containing: the claim, the
+  files read, the specific lines that prove or disprove it, and the grep/read commands used.
+- **Limitations:** This method verifies code structure, not runtime behavior. A function that
+  constructs the right data might never be called, or might be called with wrong arguments at
+  runtime. If the claim requires runtime proof, mark PARTIAL with gap = "code path exists but
+  runtime execution not verified; needs integration-test-with-tap or live-controlled-run."
 
 ### Step 4: Render the verdict
 

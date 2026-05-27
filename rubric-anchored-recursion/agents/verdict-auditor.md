@@ -72,6 +72,13 @@ to look for. Examples:
 - `canonical-store-xref` → run the cross-reference query yourself, fresh
 - `live-controlled-run` → look for a captured live-run log in `evidence_dir/`
 - `file-on-disk-diff` → read the artifact on disk and diff against the rubric's expected schema
+- `code-path-static-audit` → look for `evidence_dir/*codepath*.md` for this claim. Then
+  independently verify the file:line references: read the cited files at the cited lines and
+  confirm the code does what the evidence report claims. Do NOT trust the evidence file's
+  narrative — re-read the code yourself. For negative claims, re-run the grep commands from
+  the evidence report and confirm zero hits. For interface-contract claims, trace one level
+  deeper than the evidence report (e.g., if it says "function X passes skeleton to Y," also
+  verify Y actually uses skeleton in its prompt construction)
 
 **b. Verify the evidence is fresh.** Check the file's timestamp against `iteration`. If the
 evidence is older than this iteration's loop start, mark `fresh: false`. In strict mode, that
@@ -103,8 +110,14 @@ test names that resemble real test names — but don't actually appear in the ca
 For each ✅ verdict, run one fabrication check:
 - If the evidence references an ID, key, or named entity, verify it appears in the canonical
   store (corpus, DB, fixture).
-- If any reference does not appear in the canonical store, the sub-claim is ❌ FABRICATED, not
-  ✅. Note this prominently in the verdict report.
+- If the evidence references a file:line (code-path-static-audit), verify the file exists and
+  the line contains the claimed code. Stale line numbers (code changed after evidence capture)
+  invalidate the evidence — mark `fresh: false` and re-audit.
+- If the evidence claims a data flow exists, verify at least one hop beyond the cited evidence:
+  if the evidence says "function A passes X to function B," also verify that B's implementation
+  uses X in the expected way (not just accepts it as a dead parameter).
+- If any reference does not appear in the canonical store or codebase, the sub-claim is
+  ❌ FABRICATED, not ✅. Note this prominently in the verdict report.
 
 ### Step 4: Render the binary verdict
 

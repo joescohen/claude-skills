@@ -180,9 +180,14 @@ Constitutional AI (locked rubric)
   → loop body uses → CoVe (decomposed verification questions, answered independently)
                   + TDPE (proof infrastructure before fix)
                   + Falsifiability (every sub-claim has an explicit negation)
+  → rubric design uses → Three-Layer Claim Decomposition (interface / IR / output)
+                       + Design Rationale Anchoring (plan/research cross-reference)
+                       + Interface-Boundary Negatives (data-exclusion falsification)
   → loop terminator is → Chain-of-Custody (not a confidence score)
   → bias isolation comes from → Multi-Agent Debate (parallel contexts, blind verdict auditor)
   → motivated by → Huang et al. on same-model self-correction limits
+  → architectural fidelity grounded in → arXiv 2506.16411 (model noise), 2502.00977 (CAHM),
+                                          2604.01029 (re-generation > revision), 2404.16130 (GraphRAG)
 ```
 
 The v1 single-agent version of this skill demonstrated the loop in principle and produced
@@ -191,3 +196,54 @@ the same agent closing a gap also assessed whether it was closed, with the predi
 that motivates the entire multi-agent literature. The v2 multi-agent architecture realizes
 the bias-isolation gains while preserving the rubric coherence that requires a single
 conductor.
+
+---
+
+## Architectural Fidelity (v3 Addition)
+
+**Motivating observation:** A 2026-05-27 SEPAL session produced two rubric iterations for the
+same multi-pass synthesis pipeline. The first rubric was output-focused (citation coverage,
+section completeness, runtime). The second, after user correction, was architecture-focused
+(does the implementation follow the research patterns?). The first rubric could have been
+satisfied by an architecturally incorrect implementation that happened to produce good output
+on the test distribution — the output metrics alone couldn't distinguish "right answer, right
+reason" from "right answer, wrong reason."
+
+This observation is grounded in four research papers that motivate the three-layer claim
+decomposition:
+
+**"When Does Divide-and-Conquer Work?"** (arXiv 2506.16411, 2025). Theorem 3.2: D&C wins
+when model noise is superlinear AND task noise is bounded. Testing only output metrics (citation
+coverage) cannot distinguish "chunking worked because task noise was bounded by the intermediate
+representation" from "the model got lucky." The *mechanism* (Pass 1 structural graph) matters
+because it's what bounds task noise — without verifying the mechanism exists, the architecture
+is fragile even when outputs look correct.
+
+**CAHM — Cross-chunk Boundary Preservation** (arXiv 2502.00977, 2025). Cross-chunk semantic
+relationships must be preserved via shared context. If a downstream phase doesn't receive the
+upstream structural context, coherence is maintained only by model priors (which break on
+distribution shift). Interface-contract claims ("every Pass 2 call receives the skeleton")
+are categorically different from output claims ("the final report shows cross-analyzer
+synthesis") — the output can look correct by accident while the interface is broken.
+
+**"Revision or Re-Solving?"** (arXiv 2604.01029, 2026). Re-generation from intermediate outputs
+beats revision. The distinction between "Pass 3 generates from evidence" and "Pass 3 revises
+prior output" is invisible in the final text quality on easy inputs, but revision accumulates
+error at scale. Only a code-path-static-audit of the prompt construction catches this.
+
+**GraphRAG** (Microsoft, arXiv 2404.16130, 2024). The intermediate representation (community
+summaries) is the key innovation that separates "chunk-then-concatenate" from "detect
+communities, summarize, then reduce." Both produce passable output on small inputs; only the
+latter scales. An IR claim ("Pass 1 output is a relational graph, not prose") is what
+distinguishes the two architectures.
+
+**The generalization:** Output-only rubrics have a structural blind spot: they can be satisfied by
+architecturally incorrect implementations on easy inputs. The failure surfaces only at scale, on
+harder distributions, or under adversarial conditions — exactly when you need the architecture
+most. The three-layer decomposition (interface contracts → intermediate representation → output
+properties) closes this blind spot by verifying the *mechanism*, not just the *result*.
+
+This is the same insight that motivates Chain-of-Custody verification in the v2 skill: a correct
+output with a broken provenance chain is a time bomb. The v3 extension applies that principle to
+the rubric design itself — a correct output with violated architectural invariants is the same
+kind of time bomb, just at a higher level of abstraction.

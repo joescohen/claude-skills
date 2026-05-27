@@ -25,19 +25,27 @@ Schema for `rubric.md`:
 
 <single sentence framed as a question with a binary answer>
 
+## Design Rationale Sources (if applicable)
+- Plan: <path to implementation plan>
+- Research: <arXiv IDs, paper titles, or paths to research docs>
+- Key mechanisms: <1-2 sentences naming the structural properties the architecture depends on>
+
 ## Sub-Claims
 
 ### C1
 **Claim:** <atomic, falsifiable assertion>
+**Claim layer:** <interface-contract | intermediate-representation | output-property>
 **Negation:** <what would prove this false — explicit>
 **Verification method:** <named — see allowed methods below>
 **Canonical store:** <if applicable — DB table, file, log channel, etc.>
+**Design rationale:** <if applicable — which research mechanism this claim tests>
 
 ### C2
 ...
 
 ### Cn (negative claim — at least one when fabrication is a risk)
 **Claim:** <when condition X holds, NO occurrence of Y>
+**Claim layer:** <interface-contract | intermediate-representation | output-property>
 **Negation:** <a single fabricated Y disproves this>
 **Verification method:** <named>
 
@@ -53,11 +61,30 @@ Verdict: DEFINITIVE YES | NOT YET
 \`\`\`
 ```
 
+**Claim layers (mandatory for multi-phase pipeline rubrics):**
+- `interface-contract` — verifies data flowing into a phase has the right shape, provenance,
+  completeness, and exclusions. Catches plumbing errors.
+- `intermediate-representation` — verifies a phase's output is a structure with specific relational
+  properties, not just "some output." Catches mechanism errors.
+- `output-property` — verifies the final assembled output has characteristics that could only emerge
+  from the architecture working correctly. Catches integration errors.
+
+When the rubric targets a multi-phase pipeline, it MUST include at least one claim at each layer.
+Single-phase or simple rubrics may omit the layer annotation.
+
 **Allowed verification methods:**
 - `integration-test-with-tap` — test captures structured TAP events; assertion checks TAP
 - `canonical-store-xref` — query a canonical store (DB table, fixture file) for the expected key
 - `live-controlled-run` — small, scoped real run with captured logs (only after mocked tests pass)
 - `file-on-disk-diff` — final artifact on disk matches expected schema or contains expected key
+- `code-path-static-audit` — read the implementation code and verify a specific data flow exists
+  (or does not exist) by identifying exact file:line references. Evidence is structural: the code's
+  control flow, argument passing, and data construction at identified locations. Appropriate for
+  interface-contract and IR claims where the contract is enforced by code structure. The auditor
+  greps/reads code, identifies the lines where data is constructed and passed, and verdicts based
+  on whether the observed flow matches the claim. NOT a substitute for runtime verification —
+  use for claims about prompt construction, data serialization shape, argument plumbing, and
+  architectural wiring. Must produce file:line evidence pointers, not narrative assertions.
 
 Methods like "manual inspection," "looks correct," or "code review" are not allowed.
 
@@ -72,9 +99,11 @@ Methods like "manual inspection," "looks correct," or "code review" are not allo
 ```yaml
 ## CHECKPOINT: AUDIT_VERDICT
 sub_claim_id: C<n>
+claim_layer: interface-contract | intermediate-representation | output-property  # omit for simple rubrics
 verdict: WORKS | BROKEN | PARTIAL                  # tri-state
 evidence_pointer: <path or query that reproduces the evidence>
 evidence_summary: <one sentence — what was observed>
+design_rationale_verified: true | false | n/a       # did the code implement the intended mechanism?
 gap_if_any:
   description: <one specific sentence; null if verdict=WORKS>
   what_would_close_it: <one specific sentence; null if verdict=WORKS>
