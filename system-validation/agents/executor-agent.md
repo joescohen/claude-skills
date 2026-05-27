@@ -158,6 +158,28 @@ A row is PASS only when all applicable channels agree with the spec.
 A row with no screenshot is not verified — take the screenshot.
 **A row that passes at desktop but fails at a directive-required viewport is FAIL.**
 
+#### Visibility claims require computed CSS, not just element presence
+
+When the row asserts "X is visible" or equivalent ("can be seen", "is shown", "renders
+as a pill", "is readable"), structural presence in the DOM is necessary but **not
+sufficient**. You must verify computed CSS properties sufficient for user perception:
+
+- background alpha against the parent background **≥ 0.20** (anything ≤ 0.15 is
+  effectively invisible on dark themes; ≤ 0.20 is below the perceptibility threshold)
+- text/background contrast ratio **≥ 3:1** for non-body text (badges, labels, links)
+- padding **≥ 0.2em** for elements styled as pills, badges, or buttons (below this,
+  the element reads as inline text rather than a distinct labeled container)
+- element not occluded by other elements (`z-index` order, `overflow: hidden`
+  truncation, `display: none` overrides)
+
+**If the capture mechanism is curl-only / static-HTML-only (no browser harness), you
+cannot evaluate computed CSS.** Declare any "is visible" row **BLOCKED**, not PASS, when
+your capture mechanism cannot reach the rendered DOM. A row that PASSes on element
+presence alone is a false-positive when the user complaint will be "I don't see it" —
+this is the 2026-05-16 lesson
+`lesson-visibility-validation-must-include-computed-css-not-just-html-presence` (active
+in CEI's `learning/lessons/active/`).
+
 ### 3c: Exercise Every Knob (while in context)
 
 While testing a feature, toggle relevant controls:
@@ -196,7 +218,29 @@ Then continue execution unless the state makes remaining rows meaningless.
   actual: <what was observed — be specific>
   evidence: <screenshot path, or describe what the screenshot shows>
   reproducible: true | false
+  lesson_derived: <lesson_id string or null — see "Lesson-Derived Row Tag Preservation" below>
 ```
+
+### Lesson-Derived Row Tag Preservation
+
+When a matrix row carries a `[LESSON-DERIVED: <lesson_id>]` tag (set by matrix-agent Step 1.5), the executor MUST preserve the tag in every finding record produced from that row. The cluster-output schema includes a `lesson_derived` field on each finding:
+
+```json
+{
+  "finding_id": "F-...",
+  "row_id": "VM-...",
+  "verdict": "PASS|FAIL|INCONCLUSIVE",
+  "evidence": "...",
+  "lesson_derived": "lesson-negative-tests-need-paired-positive-controls"  // or null
+}
+```
+
+Rules:
+1. If the source row has `[LESSON-DERIVED: <id>]`, set `lesson_derived` to the lesson ID (without the surrounding `[LESSON-DERIVED: ... ]` brackets).
+2. If the source row is NOT lesson-derived, set `lesson_derived: null` explicitly (not omitted, not undefined).
+3. Do NOT modify the tag content. Pass it through verbatim from the matrix row.
+
+**Why this matters:** Reporter Step 2.7 classifies findings as `prevented` / `recurred` / `novel` by joining cluster-output findings against the matrix's `[LESSON-DERIVED]` rows on `lesson_derived` field. Without the tag preserved in the finding record, the join is impossible and the reporter must fall back to heuristic classification, which loses lesson-attribution provenance.
 
 **Severity guide:**
 - **critical**: core flow blocked, data corruption, security failure, blank page
@@ -407,6 +451,15 @@ After executing all rows (and after any ESCALATION if applicable), emit the foll
 as the **final content** of your response. Include all findings, including those from
 the feature sweep and any layout invariant checks from Phase 2.
 
+**Before emitting:** verify your own arithmetic. Count `rows_executed`, `rows_passed`,
+`rows_failed`, `rows_blocked` — the four must sum to your total row count for the
+cluster (no overlap, no missing). If a row appears in `rows_passed` AND has a finding
+of severity `critical` or `high`, that's a false-positive PASS — move it to
+`rows_failed` and explain in the finding. The 2026-05-16 lesson
+`lesson-conductor-must-verify-subagent-verdicts-not-relay` (CEI) codifies that
+conductors will recompute these counts from your output, so internal inconsistency
+will be caught downstream — better to catch it here.
+
 ```
 ## CHECKPOINT: CLUSTER_COMPLETE
 - cluster_id: <A/B/C>
@@ -428,6 +481,7 @@ the feature sweep and any layout invariant checks from Phase 2.
     actual: "Agent Interfaces" label clipped; horizontal scroll introduced
     evidence: screenshot saved to /tmp/system-validation/FIND-A-001.png
     reproducible: true
+    lesson_derived: null  ← set to lesson_id string when vm_row has [LESSON-DERIVED: <id>] tag; null otherwise (required field, never omitted)
 - screenshots_taken: <N>
 - execution_time_ms: <N>
 ```

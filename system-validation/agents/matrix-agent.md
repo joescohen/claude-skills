@@ -18,6 +18,10 @@ The Conductor provides these in your dispatch prompt:
   invocation message. Every directive must produce at least one T1 test row — not weighted
   into existence, required. If a directive has no row in the spec's risk areas, add rows
   for it directly from this input.
+- **RETRIEVED LESSONS** (`retrieved_lessons`): structured lesson records from the lessons
+  corpus, pre-filtered by the Conductor. Each lesson contains `probes` — concrete assertions
+  that must become mandatory test rows. These are categorically different from calibration
+  input — they are **mandatory test dimensions** derived from proven past failures.
 - **calibration_answers**: the user's answers to Phase 0.5 calibration questions (if any)
 - **conductor_context**: additional context the Conductor extracted from the conversation
   (known bugs, recent changes, user frustrations — things not in the spec)
@@ -33,6 +37,40 @@ Read the full `specification.md`. Extract:
 - The interaction model (action → expected result pairs)
 - Data invariants that should be checked
 - Quality attributes, especially responsive breakpoints
+
+---
+
+## Step 1.5: Generate Lesson-Derived Rows
+
+**This step is mandatory when `retrieved_lessons` is non-empty; skip if empty.**
+
+For each lesson in `retrieved_lessons`, generate `[LESSON-DERIVED]` rows from its `probes`
+field. These rows are non-negotiable — they represent proven failure patterns that this
+system is at risk for based on the Conductor's retrieval matching.
+
+**Rules:**
+- Every retrieved lesson must produce at least one T1 row.
+- Rows are tagged `[LESSON-DERIVED]` in the matrix, analogous to `[USER-DIRECTED]`.
+- Minimum Risk score: 4×4 = 16 (same floor as user-directed rows).
+- The row's `Action` and `Expected Result` come from the lesson's `probes` field
+  (a top-level array on the lesson JSON, NOT nested under `solution`). Each probe is
+  `{id, question, expected}` — lift `question` verbatim into Action and `expected` into
+  Expected Result. These are concrete, pre-validated assertions.
+- The row's `REQ-ID` traces to the most relevant spec requirement or risk area. If no
+  spec entry covers the lesson's failure pattern, create a new `RISK-LD-N` risk area
+  referencing the lesson ID.
+
+**Format:**
+```
+| VM-LD-01 | RISK-LD-1 | T1 | <method from probe> | <channel> | [LESSON-DERIVED: <lesson_id>] <action from probe> | <expected result from probe> | 4×4 = 16 |
+```
+
+**Cap:** Maximum 3 lessons × maximum 3 rows per lesson = maximum 9 lesson-derived rows.
+If a lesson's `probes` list exceeds 3 items, take the first 3 by order (they are
+priority-ranked in the lesson file).
+
+After generating, verify each row traces to a real spec entry or a new `RISK-LD-N` you
+created. Rows without traceability are noise.
 
 ---
 
@@ -241,6 +279,7 @@ Before finalizing, verify:
 - Every Tier 1 requirement has at least **two method rows** (cross-channel verification)
 - Every RISK-ID has at least one row
 - **Every `user_directive` has at least one T1 row** — this is a hard requirement
+- **Every retrieved lesson has at least one `[LESSON-DERIVED]` T1 row** — this is a hard requirement when `retrieved_lessons` is non-empty
 - Calibration answers are reflected as high-stress variant rows
 - Empty/error/overflow states covered for T1 features
 - **Visual polish rows exist for any web UI with visual components** (SVGs, diagrams, animations)
@@ -298,6 +337,9 @@ Emit the following as the **final content** of your response:
   - all_t1_reqs_covered: true
   - risk_areas_covered: true
   - user_directives_covered: true   ← required field; false is a blocking error for the Conductor
+  - lessons_covered: true            ← required when retrieved_lessons is non-empty; false is a blocking error
+  - lessons_retrieved:               ← list lesson IDs that generated rows; empty list if no lessons retrieved
+    - 2026-05-12-sepal-trace-to-instrumentation-blindness
   - user_focus_areas_covered: true
   - output_conformance_invariants_covered: true  ← required when spec has OUTPUT-DIST-N entries; false is a blocking error
   - state_propagation_three_layer_complete: true  ← required when spec contains cross-layer state-propagation claims; false is a blocking error

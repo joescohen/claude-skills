@@ -36,11 +36,11 @@ presenting. Frame findings in terms of user impact, not technical detail.
 ```
 User → Conductor (you) → [Gate -1: Runtime Precondition Probe] → Spec Agent → [Gate 1]
      → Matrix Agent → [Gate 2] → Executor Agents (parallel) → [Gate 3]
-     → Reporter Agent → [Gate 4] → User
+     → Reporter Agent → [Gate 4] → Adversarial Reviewer → [Gate 5] → User
 ```
 
-Full protocol defined in: `/Users/jsc6121/.claude/skills/system-validation/checkpoint-contract.md`
-Agent instructions in: `/Users/jsc6121/.claude/skills/system-validation/agents/`
+Full protocol defined in: `~/.claude/skills/system-validation/checkpoint-contract.md`
+Agent instructions in: `~/.claude/skills/system-validation/agents/`
 
 ---
 
@@ -86,6 +86,40 @@ output_path: /tmp/system-validation/
 - `user_directives` = explicit test requirements. They generate mandatory T1 rows. They are
   passed to every agent as a separate required field. They cannot be merged into user_concerns.
 - `user_concerns` = soft signals that increase risk scores. They feed STAMP analysis.
+
+**Step 4: Retrieve lessons from the CEI corpus**
+
+The CEI lesson corpus contains structured records of past validation failures — root
+causes, detection gaps, and concrete probes that prevent recurrence. Retrieving
+relevant lessons before dispatch is the single highest-leverage step for preventing
+known-class failures. Lessons live in CEI (not in this skill); SV reads them via the
+resolver chain below.
+
+1. Resolve the CEI repository root. Resolution order (do NOT hardcode any path):
+   a. `$CEI_REGISTRY_ROOT` environment variable, if set
+   b. Shell out: run `cei root` via Bash tool and parse stdout (returns absolute path; exit 0 on success). Capture stderr separately.
+   c. If both fail: emit a pre-flight warning and proceed with `retrieved_lessons: []`. Do NOT hard-fail the validation run — lesson retrieval is enrichment, not a precondition. Add this exact line to your pre-dispatch acknowledgment so the user knows lesson enrichment was skipped: `[CEI lesson retrieval unavailable — proceeding without retrieved_lessons. Reason: <env-unset | cei-root-failed>]`
+
+2. Read `<CEI_REGISTRY_ROOT>/learning/lessons/active/*.json` (JSON files, not Markdown).
+
+3. Filter to SV-consumable lessons. A lesson is SV-consumable iff:
+   - `applies_when` is present and non-empty, AND
+   - `probes` is present and contains ≥1 entry, AND
+   - At least one of `applies_when.components` or `applies_when.signals` is non-empty
+
+4. Of SV-consumable lessons, filter by relevance to the current pre-flight context:
+   - Match on `applies_when.components` — intersect with the components named in user_directives + spec context
+   - Match on `applies_when.signals` — intersect with detected signals from CLAUDE.md/README/recent commits
+   - For each surviving lesson, check that ALL `applies_when.preconditions` are true for the current pre-flight context (e.g., if a precondition says "React project", the pre-flight context must include React). Drop the lesson if any precondition is false.
+   - Apply `do_not_apply_if` as a negative filter (if any item matches the codebase, exclude the lesson)
+
+5. Rank surviving lessons by `(reinforcement_count || 1) × (confidence || 0.6)` descending. Take the top 3.
+
+6. Populate the context-object field `retrieved_lessons` with the top-3 lesson objects (full JSON records). Downstream agents (Matrix, Spec, Reporter) consume this field as documented in the prompt-include blocks below.
+
+**Cap rationale:** 3 lessons max prevents retrieval poisoning of downstream prompts. If more than 3 lessons match, the highest-ranked 3 win.
+
+**Format note:** lesson body sections (Problem/Trigger/Root Cause/Solution/etc.) live in the case file referenced by `source_refs[]`, not in the lesson JSON itself. Downstream agents should pull narrative context from the case file if needed for full understanding.
 
 ---
 
@@ -195,7 +229,7 @@ If **all checks pass**: proceed to Pre-Dispatch Acknowledgment → Spec Agent.
 Dispatch the Spec Agent with your pre-flight context:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/spec-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/spec-agent.md
 Model: haiku
 Prompt must include:
   - system_description
@@ -204,6 +238,7 @@ Prompt must include:
   - user_concerns    ← soft context for STAMP weighting
   - known_issues (so the spec agent flags these as risk areas)
   - recently_changed (so recently changed areas get higher risk scores)
+  - retrieved_lessons ← from Step 4 — label "RETRIEVED LESSONS (use in Step 1b)"
   - output_path
   - Absolute path to the codebase root
 ```
@@ -268,11 +303,12 @@ Wait for the user's response (unless skipped). Collect:
 Dispatch the Matrix Agent with calibration input:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/matrix-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/matrix-agent.md
 Model: haiku
 Prompt must include:
   - specification_path (from SPEC_COMPLETE)
   - user_directives  ← MANDATORY FIELD — these generate required rows, not optional ones
+  - retrieved_lessons ← MANDATORY FIELD — these generate [LESSON-DERIVED] rows (see matrix-agent.md Step 1.5)
   - calibration_answers (from user)
   - conductor_context (known_issues + user_concerns from pre-flight)
   - output_path
@@ -282,6 +318,9 @@ Wait for MATRIX_COMPLETE. Parse it:
 - Extract: total_rows, clusters, coverage_check, matrix_path
 
 **Coverage gate:**
+- If `lessons_covered: false` AND `retrieved_lessons` was non-empty → blocking error. Each retrieved
+  lesson must have at least one `[LESSON-DERIVED]` row in the matrix. Add missing rows yourself using
+  the lesson's `probes` field; re-verify before dispatch.
 - If `user_directives_covered: false` → blocking error. Add missing rows yourself; re-verify before dispatch.
 - If `output_conformance_invariants_covered: false` AND spec has OUTPUT-DIST-N entries → blocking error.
   Add the OC cluster rows yourself (VM-OC-01 through VM-OC-03 per invariant) and re-verify before dispatch.
@@ -312,7 +351,7 @@ Tell the user concisely:
 Dispatch all clusters simultaneously. One executor agent per cluster:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/executor-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/executor-agent.md
 Model: haiku
 Run ALL clusters in parallel (one Agent dispatch per cluster)
 Each prompt must include:
@@ -416,7 +455,7 @@ is `UNVERIFIED`.
 Collect all CLUSTER_COMPLETE outputs. Dispatch the Reporter:
 
 ```
-Agent file: /Users/jsc6121/.claude/skills/system-validation/agents/reporter-agent.md
+Agent file: ~/.claude/skills/system-validation/agents/reporter-agent.md
 Model: haiku
 Prompt must include:
   - cluster_outputs: full text of ALL CLUSTER_COMPLETE checkpoints, concatenated
@@ -430,7 +469,61 @@ Wait for REPORT_COMPLETE. Parse it:
 
 ---
 
-## Gate 4: Synthesize for User
+## Gate 4 → Gate 5: Dispatch Adversarial Reviewer (blind, final stage)
+
+**This stage belongs to system-validation itself — it has no dependency on any external learning
+system.** It runs on every validation, between the reporter and your synthesis, to catch
+false-completion (a "PASS/done/verified" claim that does not survive contact with the raw evidence)
+that per-gate arithmetic and the reporter's narrative cannot see.
+
+**Step 1 — Assemble the blinded packet.** Hand the reviewer ONLY ground truth + evidence, never the
+reporter's narrative or `audit-report.md`:
+- `claims`: every PASS/done/verified assertion — each PASS row from CLUSTER_COMPLETE, each Tier-1
+  REQ assertion, the REPORT_COMPLETE stats, any Phase 4.5 behavioral PASS. Each gets a `claim_id`,
+  its text, the matrix row id(s) it rests on, and its assigned severity.
+- `raw_cluster_outputs`: the unprocessed CLUSTER_COMPLETE blocks.
+- `specification_path`, `matrix_path` (independent acceptance criteria — blind review is near-random
+  without them).
+- screenshot/artifact paths + `capture_mechanism_proven` / `capture_proof_payload` from Gate -1.
+- `canaries`: inject ≥1 known-GOOD claim (must SURVIVE) and, where constructible, one known-BAD claim
+  (must be OVERTURNED). Record their true verdicts so you can check the reviewer's calibration.
+
+**Step 2 — Dispatch.**
+```
+Agent file: ~/.claude/skills/system-validation/agents/adversarial-reviewer-agent.md
+Model: a strong model (NOT the cheapest tier — this is the falsification gate)
+Prompt must include the blinded packet above, and MUST NOT include the reporter narrative.
+```
+
+**Step 3 — Parse ADVERSARIAL_COMPLETE and act:**
+- If `canaries.calibration` ≠ `ok`, treat the whole verdict set as suspect and say so to the user.
+- Each OVERTURNED Tier-1 claim is a `blocking_finding` — you MUST lead the synthesis with the
+  correction, not bury it.
+- Drop or correct any OVERTURNED claim; relabel UNPROVEN claims as unconfirmed (never PASS).
+- For `unresolved_disputes` (HIGH/CRITICAL still UNPROVEN after the one rebuttal), surface them and
+  stop for a human decision before treating those claims as resolved.
+- Apply the `severity` adjustments.
+
+**Rebuttal (optional, cap 1):** if the reviewer OVERTURNED/UNPROVEN'd a HIGH/CRITICAL claim and you
+hold counter-evidence, re-dispatch the reviewer ONCE with that claim + counter-evidence. No third round.
+
+**Tuning:** the reviewer defaults to skeptical-with-cited-evidence — over-aggression false-rejects
+genuinely-correct work (the worse failure), so it overturns only on cited contradicting evidence and
+uses UNPROVEN for "can't tell." If canaries miss or you keep successfully rebutting it, loosen the
+stance; if it rubber-stamps, tighten. Never add rounds to compensate for miscalibration.
+
+**Optional external hand-off (decoupled):** OVERTURNED findings MAY be offered to an external learning
+system if one is configured, reusing the Gate 4.5 reachability-fallback pattern. SV neither depends on
+nor is affected by its absence.
+
+---
+
+## Gate 5: Synthesize for User
+
+**Precondition — Gate 5 first:** do not synthesize until ADVERSARIAL_COMPLETE (above) is parsed and
+applied — drop/correct OVERTURNED claims, relabel UNPROVEN as unconfirmed (never PASS), lead with any
+blocking Tier-1 correction, and surface unresolved HIGH/CRITICAL disputes for a human. Synthesize only
+over claims that SURVIVED the adversarial pass.
 
 Do not relay the report summary verbatim. Synthesize in terms of what matters to the user:
 
@@ -450,6 +543,90 @@ Do not relay the report summary verbatim. Synthesize in terms of what matters to
 
 If user directives were given, confirm each one was tested:
 > "On your specific requests: [directive] — [pass/fail/what was found]."
+
+---
+
+## Gate 4.5: Lesson Feedback Loop
+
+After synthesizing findings for the user, close the loop between this run's findings and
+the lessons corpus. This is what makes the corpus compound across runs instead of going stale.
+
+**Gate 4.5 Step 1: Read lesson_tracking from the reporter**
+
+The reporter-agent (Step 2.7a) is the authoritative classifier. After REPORT_COMPLETE returns, read the `lesson_tracking` block from the reporter's checkpoint output. Do NOT re-classify findings; the reporter has already joined them against `[LESSON-DERIVED]` matrix rows via `finding.lesson_derived`.
+
+The `lesson_tracking` block contains:
+- `prevented`: findings that match a lesson AND PASSed (lesson worked)
+- `recurred`: findings that match a lesson AND FAILed (lesson exists but didn't prevent it)
+- `novel`: findings with no `lesson_derived` (no lesson covers this finding)
+- `novel_high_severity`: subset of `novel` with severity high|critical (these become Gate 4.5 Step 3 candidates)
+
+Proceed to Step 2 (stale-lesson detection) using `lesson_tracking.novel_high_severity` as the input for Step 3.
+
+**Step 2 — Report lesson status to user:**
+
+Add one line to the Gate 4 synthesis per correlated lesson:
+
+> "Lessons applied: [N] retrieved, [N] prevented recurrence, [N] recurred despite prior knowledge, [N] novel findings."
+
+**Gate 4.5 Step 3: Draft candidate lessons for novel high-severity findings**
+
+For each finding classified as `novel` with severity `high` or `critical`:
+
+1. Resolve `<CEI_REGISTRY_ROOT>` using the same resolver chain as Step 4 of pre-flight (env var → `cei root` → skip with warning).
+
+2. If CEI is reachable, write a candidate JSON to `<CEI_REGISTRY_ROOT>/learning/lessons/candidates/<ISO-timestamp>-sv-novel-<finding-id>.json` with this shape:
+
+```json
+{
+  "id": "lesson-sv-novel-<finding-id>",
+  "title": "<one-line finding summary>",
+  "scope": "global",
+  "source_type": "system_validation_run",
+  "source_refs": ["<finding-id>", "<matrix-row-ids>"],
+  "lesson": "<3-5 sentence summary of the finding and proposed prevention>",
+  "applies_to": ["<inferred-targets>"],
+  "control_surfaces": ["validation_matrix_spec"],
+  "trigger_signal": "<signal that should trigger retrieval>",
+  "status": "proposed",
+  "verification": "<how to reproduce/verify>",
+  "last_relevant": "<current ISO timestamp>",
+  "reinforcement_count": 1,
+  "applies_when": {
+    "components": ["<components from finding context>"],
+    "signals": ["<signals from finding context>"],
+    "preconditions": []
+  },
+  "do_not_apply_if": [],
+  "probes": [
+    { "id": "probe-1", "question": "<the question this lesson would ask>", "expected": "<expected answer>" }
+  ],
+  "tags": ["sv-novel"],
+  "severity": "<high|critical>",
+  "provenance": {
+    "trigger": "novel_finding_high_severity",
+    "session_id": "<SV run UUID, or synthetic_<uuid> if SV doesn't track one>",
+    "hook": "system-validation Gate 4.5",
+    "timestamp": "<current ISO timestamp>",
+    "agent_authored": true,
+    "distill_run_id": "sv-novel-<run-id>"
+  }
+}
+```
+
+The `provenance` block uses CEI's canonical `REQUIRED_PROVENANCE_FIELDS` (from `src/auto/stamp-provenance.js`): `trigger`, `session_id`, `hook`, `timestamp`, `agent_authored`, `distill_run_id`. `cei verify` rejects any candidate missing or having empty values for these fields with `CANDIDATE_DRIFT`. SV-specific audit info (the finding ID, matrix-row IDs) lives in the top-level `source_refs[]` field, which already exists on every active CEI lesson — see `learning/lessons/active/lesson-negative-tests-need-paired-positive-controls.json` for the canonical shape.
+
+3. The candidate enters CEI's standard promotion ladder. Do NOT promote it locally. The user reviews via `cei review list` and `cei review accept <id>`.
+
+4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json`. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable. Surface the fallback path in the final report's "Skill Health" or equivalent section so the user sees it after the run: `[Gate 4.5 fallback fired: novel-finding stub written to ~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json instead of CEI candidates dir. Reason: <env-unset | cei-root-failed>. Manually move to CEI candidates/ when CEI becomes reachable.]`
+
+**Step 4 — Archive stale lessons (opportunistic):**
+
+If any retrieved lesson's `date` is older than 90 days AND it was not cited as `prevented`
+or `recurred` in this run, note it for the user:
+
+> "Lesson `<id>` is >90 days old and was not relevant this run. Consider archiving it
+> (`status: archived`) if the underlying issue has been resolved."
 
 ---
 

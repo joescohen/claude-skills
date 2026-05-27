@@ -161,6 +161,62 @@ invariants but no VM-OC-* rows exist in the matrix. System output quality is unv
 
 ---
 
+## Step 2.7: Lesson Correlation
+
+After aggregating findings and before emitting REPORT_COMPLETE, correlate this run's
+findings against any `[LESSON-DERIVED]` rows in the matrix. This closes the feedback
+loop between the lessons corpus and live validation results.
+
+**Step 2.7a — Classify each finding against lessons:**
+
+For each finding in the cluster outputs, read its `lesson_derived` field directly
+(set by the executor — see `executor-agent.md` "Lesson-Derived Row Tag Preservation").
+This is the authoritative join key — do NOT parse `[LESSON-DERIVED: <id>]` strings out
+of `vm_row` IDs or matrix rows; the executor has already extracted the lesson ID and
+written it into the finding record.
+
+Classify each finding:
+
+- **`prevented`**: The finding's `lesson_derived` is non-null AND the row referenced by
+  `vm_row` **passed**. The lesson's probes caught the pattern — the system is protected.
+  (When a row passes, the executor typically does not emit a finding; `prevented` cases
+  surface from row-level pass-with-observation entries, or from cross-row correlation
+  where a lesson-derived sibling row passed and a related row failed for an unrelated
+  reason.)
+- **`recurred`**: The finding's `lesson_derived` is non-null AND the row referenced by
+  `vm_row` **failed**. The lesson identified a known failure class that is still present.
+- **`novel`**: The finding's `lesson_derived` is `null`. This is a failure class no
+  retrieved lesson predicted — candidate for a new lesson via Gate 4.5 Step 3.
+
+If `lesson_derived` is missing from a finding (the executor failed to emit the required
+field), fall back to heuristic classification by looking up the finding's `vm_row` in
+the matrix and checking for a `[LESSON-DERIVED: <id>]` substring — but record a
+`lesson_tracking_field_missing: true` warning in the report. With the executor
+contract correctly upheld, this fallback should never fire.
+
+If no findings carry a non-null `lesson_derived` AND no `[LESSON-DERIVED]` rows exist
+in the matrix, classify all findings as `novel`.
+
+**Step 2.7b — Add lesson tracking to the report:**
+
+Add a **Lesson Tracking** section to the report, after Escalation Events:
+
+```
+### Lesson Tracking
+
+Lessons retrieved: N
+- [lesson_id]: [prevented | recurred] — [one-line explanation]
+
+Novel findings (no matching lesson): N
+- FIND-NNN: [short title] — candidate for new lesson
+```
+
+**Step 2.7c — Emit lesson tracking in checkpoint:**
+
+Include `lesson_tracking` in the REPORT_COMPLETE checkpoint (see schema below).
+
+---
+
 ## Step 3: Emit REPORT_COMPLETE
 
 Emit the following as the **final content** of your response:
@@ -181,6 +237,15 @@ Emit the following as the **final content** of your response:
 - top_issues:  (list top 3 finding IDs by severity, or write [] if no findings)
   - FIND-001
   - FIND-002
+- lesson_tracking:
+    lessons_retrieved: <N>
+    prevented: <N>  (lesson probes passed — known failure class was caught)
+    recurred: <N>   (lesson probes failed — known failure class is still present)
+    novel: <N>      (findings with no matching lesson — candidates for new lessons)
+    novel_high_severity:  (novel findings at critical or high severity — strongest lesson candidates)
+      - finding_id: FIND-NNN
+        title: <short title>
+      - ...
 - report_path: <absolute path to audit-report.md>
 ```
 

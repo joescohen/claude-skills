@@ -152,6 +152,31 @@ Each discovery from this system-level pass becomes a `RISK-PD-N` entry, exactly 
 the per-component discoveries. These are not lower priority — they represent the class
 of defect that per-component analysis structurally cannot find.
 
+**Step 1b-ii: Incorporate retrieved lessons**
+
+If the Conductor included `retrieved_lessons` in your dispatch prompt, use them as
+proactive discovery accelerators. Each lesson is a CEI JSON record (not Markdown).
+For each retrieved lesson:
+
+1. Read the lesson's top-level `lesson` field — a 3-5 sentence summary that captures
+   the failure pattern, its root cause, and (typically) how it should be detected. Also
+   read the top-level `applies_when.signals` array — these are the textual signals the
+   lesson keys off of.
+2. If you need the full narrative (Problem / Trigger / Root Cause / Detection Gap /
+   Solution sections), `Read` the case file referenced by `source_refs[0]` — those
+   sections live in the case file, NOT in the lesson JSON. See the format note in
+   `SKILL.md` Step 4 ("body sections live in the case file referenced by `source_refs[]`,
+   not in the lesson JSON itself"). Skip this step if the lesson summary alone is enough.
+3. Check whether the pattern described in the lesson exists in the codebase you read
+   in Step 1. Look specifically for the `signals` listed in the lesson's `applies_when`.
+4. If the pattern is present: create a `RISK-PD-N` entry citing the lesson ID.
+   Format: `RISK-PD-N: [LESSON-INFORMED] <what you found> (see lesson: <lesson_id>)`
+5. If the pattern is NOT present: skip the lesson silently. Do not force a risk area
+   into the spec for a lesson that doesn't match the actual code.
+
+Lessons are hints, not mandates at the spec level. The Matrix Agent generates mandatory
+rows from lessons; here you use them to sharpen your discovery pass.
+
 Each discovery becomes a `RISK-PD-N` (Proactively Discovered) entry in Section 6.
 These are **not lower priority** than user-directed risks — they are often higher
 priority, because they represent the gaps the user literally cannot pre-specify.
