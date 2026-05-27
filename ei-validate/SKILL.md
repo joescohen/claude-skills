@@ -1,5 +1,5 @@
 ---
-name: system-validation
+name: ei-validate
 description: >
   Exhaustive, multi-modal validation of a system through screenshots, visual inspection, interactive
   exercising, and structured use cases. Catches bugs that code reviews and unit tests miss: layout breaks,

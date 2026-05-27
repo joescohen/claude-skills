@@ -1,5 +1,5 @@
 ---
-name: chat-triage
+name: ei-chat-triage
 description: >
   Diagnoses why a conversation got stuck in a repeat loop and breaks it — use this when a user pastes a conversation history and asks why it went wrong, when the same request has been made 3+ times without resolution, when a user says "still broken", "nope", "again", or "you keep doing the same thing", or when you notice an agent reporting "should work" without evidence. Takes a conversation history, spawns a structured analysis to classify the failure mode, queries the real live system to get ground truth (never assumptions), executes a targeted fix, and verifies resolution with captured evidence. Never reports done without proof.
 ---
