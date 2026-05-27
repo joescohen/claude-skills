@@ -36,7 +36,7 @@ presenting. Frame findings in terms of user impact, not technical detail.
 ```
 User → Conductor (you) → [Gate -1: Runtime Precondition Probe] → Spec Agent → [Gate 1]
      → Matrix Agent → [Gate 2] → Executor Agents (parallel) → [Gate 3]
-     → Reporter Agent → [Gate 4] → User
+     → Reporter Agent → [Gate 4] → Adversarial Reviewer → [Gate 5] → User
 ```
 
 Full protocol defined in: `~/.claude/skills/system-validation/checkpoint-contract.md`
@@ -469,7 +469,61 @@ Wait for REPORT_COMPLETE. Parse it:
 
 ---
 
-## Gate 4: Synthesize for User
+## Gate 4 → Gate 5: Dispatch Adversarial Reviewer (blind, final stage)
+
+**This stage belongs to system-validation itself — it has no dependency on any external learning
+system.** It runs on every validation, between the reporter and your synthesis, to catch
+false-completion (a "PASS/done/verified" claim that does not survive contact with the raw evidence)
+that per-gate arithmetic and the reporter's narrative cannot see.
+
+**Step 1 — Assemble the blinded packet.** Hand the reviewer ONLY ground truth + evidence, never the
+reporter's narrative or `audit-report.md`:
+- `claims`: every PASS/done/verified assertion — each PASS row from CLUSTER_COMPLETE, each Tier-1
+  REQ assertion, the REPORT_COMPLETE stats, any Phase 4.5 behavioral PASS. Each gets a `claim_id`,
+  its text, the matrix row id(s) it rests on, and its assigned severity.
+- `raw_cluster_outputs`: the unprocessed CLUSTER_COMPLETE blocks.
+- `specification_path`, `matrix_path` (independent acceptance criteria — blind review is near-random
+  without them).
+- screenshot/artifact paths + `capture_mechanism_proven` / `capture_proof_payload` from Gate -1.
+- `canaries`: inject ≥1 known-GOOD claim (must SURVIVE) and, where constructible, one known-BAD claim
+  (must be OVERTURNED). Record their true verdicts so you can check the reviewer's calibration.
+
+**Step 2 — Dispatch.**
+```
+Agent file: ~/.claude/skills/system-validation/agents/adversarial-reviewer-agent.md
+Model: a strong model (NOT the cheapest tier — this is the falsification gate)
+Prompt must include the blinded packet above, and MUST NOT include the reporter narrative.
+```
+
+**Step 3 — Parse ADVERSARIAL_COMPLETE and act:**
+- If `canaries.calibration` ≠ `ok`, treat the whole verdict set as suspect and say so to the user.
+- Each OVERTURNED Tier-1 claim is a `blocking_finding` — you MUST lead the synthesis with the
+  correction, not bury it.
+- Drop or correct any OVERTURNED claim; relabel UNPROVEN claims as unconfirmed (never PASS).
+- For `unresolved_disputes` (HIGH/CRITICAL still UNPROVEN after the one rebuttal), surface them and
+  stop for a human decision before treating those claims as resolved.
+- Apply the `severity` adjustments.
+
+**Rebuttal (optional, cap 1):** if the reviewer OVERTURNED/UNPROVEN'd a HIGH/CRITICAL claim and you
+hold counter-evidence, re-dispatch the reviewer ONCE with that claim + counter-evidence. No third round.
+
+**Tuning:** the reviewer defaults to skeptical-with-cited-evidence — over-aggression false-rejects
+genuinely-correct work (the worse failure), so it overturns only on cited contradicting evidence and
+uses UNPROVEN for "can't tell." If canaries miss or you keep successfully rebutting it, loosen the
+stance; if it rubber-stamps, tighten. Never add rounds to compensate for miscalibration.
+
+**Optional external hand-off (decoupled):** OVERTURNED findings MAY be offered to an external learning
+system if one is configured, reusing the Gate 4.5 reachability-fallback pattern. SV neither depends on
+nor is affected by its absence.
+
+---
+
+## Gate 5: Synthesize for User
+
+**Precondition — Gate 5 first:** do not synthesize until ADVERSARIAL_COMPLETE (above) is parsed and
+applied — drop/correct OVERTURNED claims, relabel UNPROVEN as unconfirmed (never PASS), lead with any
+blocking Tier-1 correction, and surface unresolved HIGH/CRITICAL disputes for a human. Synthesize only
+over claims that SURVIVED the adversarial pass.
 
 Do not relay the report summary verbatim. Synthesize in terms of what matters to the user:
 
