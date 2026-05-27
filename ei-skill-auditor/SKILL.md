@@ -1,5 +1,5 @@
 ---
-name: skill-auditor
+name: ei-skill-auditor
 description: >
   Audits any Claude Code skill after a completed run, based on user feedback about what
   was missed, mishandled, or should have been caught differently. Reads the skill's agent

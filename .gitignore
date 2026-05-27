@@ -1,13 +1,13 @@
 # Only track explicitly added skills — ignore everything else by default
 *
 !.gitignore
-!system-validation/
-!system-validation/**
-!skill-auditor/
-!skill-auditor/**
-!chat-triage/
-!chat-triage/**
-!rubric-anchored-recursion/
-!rubric-anchored-recursion/**
+!ei-validate/
+!ei-validate/**
+!ei-skill-auditor/
+!ei-skill-auditor/**
+!ei-chat-triage/
+!ei-chat-triage/**
+!ei-recursive-goal/
+!ei-recursive-goal/**
 !ei-research/
 !ei-research/**

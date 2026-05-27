@@ -1,5 +1,5 @@
 ---
-name: rubric-anchored-recursion
+name: ei-recursive-goal
 description: >
   Use when the user demands rigorous, recursive completion of a non-trivial capability —
   audits, full-chain validations, gap-closure passes, or "prove this works" tasks where the
