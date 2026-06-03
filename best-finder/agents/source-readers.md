@@ -1,7 +1,9 @@
 # Source-reader agent prompts (dispatch in parallel — one per independent source type)
 
 Dispatch all relevant readers in ONE message (parallel). Each returns candidates + raw signals +
-a self-reported richness, and writes a raw file. Conductor alone synthesizes (never dump raw output).
+a self-reported richness, and writes a raw file. Conductor alone synthesizes (never dump raw
+output) — and FIRST runs the Phase 3.5 verification gate on every reader claim (URLs resolve,
+scores trace, ≥2 independent types) before scoring; see `references/methodology.md`.
 Use `compound-engineering:ce-web-researcher` for web readers; `general-purpose` for local/MCP tasks.
 
 Shared context to inject into every reader: the query, location, dates/seasonality, party + mode +
