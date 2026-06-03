@@ -43,7 +43,12 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
 - **HIGH** — ≥3 independent types, rich + recent, converging → confident pick + evidence.
 - **MEDIUM** — 2 types / some text → recommend WITH explicit caveats; name what's missing.
 - **LOW** — 1 type, or thin/stale, or sources contradict → **do NOT fake a "best."** Say what's thin,
-  offer to dig (Chrome histogram / Reddit via Apify / Italian-language).
+  offer to dig (Chrome histogram / Reddit via Apify / Italian-language). LOW/thin may be assigned
+  ONLY after an entity-consolidation attempt (Verification gate, consolidate direction): a thin
+  reading of a single listing is not a LOW footprint until the canonical-listing search has been
+  run and still comes back thin. A candidate the user introduced (already on their itinerary/list)
+  is never scored thin/absent merely because a prior or cached run did not surface it — it gets a
+  real resolved-entity read to the same depth as the skill's own candidates before any tier is set.
 Confidence is a **computed property of the inputs**, not a vibe. Degrade honestly in thin regions.
 
 ## Verification gate (ALWAYS-ON — between reader-return and scoring)
@@ -51,10 +56,22 @@ Relaying reader output is not verifying it. The gate binds each CLAIM to evidenc
 (1) about the SAME entity, (2) individually resolvable, and (3) genuinely independent.
 On EVERY run, before scoring or tagging, the conductor checks reader claims against ground truth:
 - every load-bearing URL resolves (no 404 / redirect-to-home);
-- **entity-resolution before counting** — a source type counts toward a candidate's convergence
-  ONLY if its evidence names that same candidate. If a datum (a ranking, a review, a list
-  placement) is about a different venue, it is dropped, never counted toward this candidate's
-  type total. Confirm the subject of each cited datum equals the candidate before it contributes.
+- **entity-resolution before counting (bidirectional)** — resolve each candidate to ONE canonical
+  entity, then judge it on that entity's CONSOLIDATED evidence, never on whichever single listing
+  was pulled first. Two symmetric obligations:
+  · DROP direction — a source type counts toward convergence ONLY if its evidence names that same
+    candidate; a datum about a different venue is dropped, never counted toward this candidate's
+    type total.
+  · CONSOLIDATE direction — before scoring sufficiency or assigning any thin / no-signal / LOW /
+    discard verdict, attempt to consolidate the entity's evidence across listing variants (name
+    variants, relocation/address change, closure→reopening, per-platform fragments). A
+    suspiciously-thin or high-rating-on-few-reviews listing for a real, nameable venue MUST
+    trigger a canonical-listing search BEFORE any thin/discard verdict — a thin fragment is
+    evidence about ONE listing, not proof of the entity's whole footprint. If consolidation
+    surfaces deeper listings, score on the consolidated footprint; if it surfaces a real but
+    operationally-changed venue (recent reopening/relocation), keep it and raise an operational
+    caution instead of discarding for thin-ness.
+  Confirm the subject of each cited datum equals the candidate before it contributes.
 - **per-datum provenance** — every cited score/crowd datum (means, review counts, rankings,
   list placements) carries its OWN resolvable link, or is explicitly marked unlinked. Unlinked
   data may be shown for color but CANNOT count toward a type or support `[VERIFIED]`.
