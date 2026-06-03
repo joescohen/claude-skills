@@ -63,9 +63,14 @@ Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended defau
 - **Category** (restaurant · stay · experience) or **trip-planning** mode.
 - **Where + when** (location → loads the geography source map; dates → seasonality + booking urgency).
 - **Per-trip "mode"** (blowout / strategic-splurge / value-aware / local-hidden-gem / specific-need).
-- **⭐ Stakes gate:** "How much does nailing this matter?" Low → short-circuit to the de-biased
-  top pick + one sanity check (don't over-engineer). Medium → standard run. High → full run +
-  adversarial verification. (Satisficer vs maximizer: low/medium = satisfice, present 3–5; high = maximize.)
+- **⭐ Stakes gate:** "How much does nailing this matter?" Stakes scales DEPTH (fan-out per
+  source type) and adversarial verification — NEVER which independent source TYPES are
+  consulted (that is a fixed floor; see Phase 3). Low → shallow fan-out, de-biased top pick +
+  one sanity check (don't over-engineer). Medium → standard depth. High → maximal fan-out +
+  adversarial verifier. (Satisficer vs maximizer: low/medium = satisfice, present 3–5; high = maximize.)
+  **Escalation rule:** if the choice is costly/hard-to-redo, or the user signals they want a
+  definitive / deeply-informed answer, set HIGH — when in doubt, escalate; under-scaling depth
+  is the more expensive error.
 - **Cold-start tip (prototype-anchoring):** if the user is unsure, offer a *prototype* to react to
   ("a trip like X") rather than a blank preference form — people construct preferences by reacting.
 
@@ -79,13 +84,23 @@ single lookups, do (A) inline. Present it; let the user adjust via menus. THEN d
 for the refined, allocated interests.
 
 ### PHASE 3 — Discovery (`references/methodology.md`, `agents/`)
-**Stakes-scaled dispatch** (size the fleet off the Phase 1 stakes gate):
+**Coverage floor (every run, regardless of stakes):** dispatch one reader for EACH independent
+source type — expert/editorial, community (incl. Reddit via Apify), calibrated-crowd (incl. the
+Chrome rating-distribution histogram + the geography-correct crowd aggregator), and local-language
+for any non-English destination. Breadth is not escalation-gated; the small Apify cost is an
+accepted default. Skip a type only on explicit user opt-out, and then surface the skip in the
+sourcing-gaps panel — never defer a type silently.
 
-| Stakes | Discovery | Verification (Phase 3.5 / verifier) |
+**Stakes scales DEPTH and adversarial verification, not breadth** (size the fan-out off the Phase 1
+stakes gate):
+
+| Stakes | Fan-out depth (per type) | Adversarial verification (verifier.md) |
 |---|---|---|
-| Low    | inline — de-biased top pick + one sanity check, no fan-out | gate only |
-| Medium | parallel readers (expert-curation, community, calibrated-crowd) + `agents/strategy-researcher.md` (multi-interest/multi-leg) | gate only |
-| High   | readers + mandatory local-language reader + `agents/strategy-researcher.md` | gate + `agents/verifier.md` |
+| Low    | shallow — 1 pass per type, top candidates only | gate only |
+| Medium | standard — multiple candidates/threads/platforms per type | gate only |
+| High   | maximal — exhaustive threads/platforms + `agents/strategy-researcher.md` per region | gate + `agents/verifier.md` per finalist |
+
+The Phase 3.5 verification gate runs on EVERY run at every stakes level (relaying ≠ verifying).
 
 Dispatch one reader per **independent source type** (see `agents/source-readers.md`). Each
 returns candidates + raw signals + a self-reported richness, and writes a raw file. Use the
