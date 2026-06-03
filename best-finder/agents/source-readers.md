@@ -35,8 +35,12 @@ For the specific named candidates, gather crowd signal across the right platform
 CALIBRATED within-platform (Booking 1–10, Google/TA means + REVIEW COUNTS + recency + sub-scores).
 Get the rating DISTRIBUTION where visible (use Claude-in-Chrome for the histogram — no API exposes it).
 Surface recurring praise AND recurring complaints; flag where the headline score and the complaint
-text DIVERGE (the key tell). Flag thin/low-volume listings as inflation risks. Note booking
-reality/availability for the dates. Be explicit where you could only get the mean. Return dense digest.
+text DIVERGE (the key tell). Flag thin/low-volume listings as inflation risks — BUT for a real,
+nameable venue, first attempt to resolve/consolidate its OTHER listings (name variants, relocation,
+closure→reopening, per-platform fragments); report a thin reading as "thin on THIS listing, footprint
+unconsolidated," NEVER as a confident whole-entity thin/no-signal verdict. A thin fragment is evidence
+about one listing, not proof the venue lacks signal. Note booking reality/availability for the dates.
+Be explicit where you could only get the mean. Return dense digest.
 
 ## (Optional) Local-language / YouTube reader
 Local-language reviews (locals signal — but check the inversion rule) and/or YouTube long-form reviews
