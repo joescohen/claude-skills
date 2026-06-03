@@ -1,7 +1,9 @@
 # Source-reader agent prompts (dispatch in parallel — one per independent source type)
 
 Dispatch all relevant readers in ONE message (parallel). Each returns candidates + raw signals +
-a self-reported richness, and writes a raw file. Conductor alone synthesizes (never dump raw output).
+a self-reported richness, and writes a raw file. Conductor alone synthesizes (never dump raw
+output) — and FIRST runs the Phase 3.5 verification gate on every reader claim (URLs resolve,
+scores trace, ≥2 independent types) before scoring; see `references/methodology.md`.
 Use `compound-engineering:ce-web-researcher` for web readers; `general-purpose` for local/MCP tasks.
 
 Shared context to inject into every reader: the query, location, dates/seasonality, party + mode +
@@ -20,7 +22,8 @@ affiliate/SEO listicles. Cite every claim with a URL. Return a dense digest rank
 convergence × mode-fit); separate value vs splurge; self-grade source quality; note gaps.
 
 ## Community / insider reader
-Mine Reddit (`site:reddit.com … .json`), HN Algolia, geography-correct forums + trusted writers for
+Mine Reddit via Apify (see `references/data-sources.md` — unauthenticated `.json`/old.reddit are dead;
+seed the comment scraper with vetted thread permalinks found via `site:reddit.com` search), HN Algolia, geography-correct forums + trusted writers for
 what in-the-know travelers ACTUALLY recommend for THIS mode — and what they WARN is overrated /
 tourist-trap / wedding-factory / too-remote. Capture named candidates with convergence (how many
 independent voices) + example URLs, value hidden-gems, an explicit OVERRATED/AVOID list, and insider
