@@ -16,25 +16,37 @@ Personal use → ~zero paid APIs needed. Cost target: $0 for typical volume.
   DirectBooker (`hotel-search`/`hotel-details`; emit its `golden_link` verbatim). Note DirectBooker
   favors bookable/branded inventory (survivorship bias) — don't equate "bookable" with "best."
 
-## Reddit (no $12k API)
-`WebSearch("site:reddit.com \"best <thing>\" <place> after:<year>")` → WebFetch the threads, or append
-**`.json`** to a thread URL for structured comment scores/timestamps. Extract: comment score, recency,
-subreddit (locals subs > general), skip `[deleted]`. Plus **Hacker News Algolia API** (free, no key).
-> ⚠️ **ENVIRONMENT REALITY (verified 2026-06):** BOTH the research crawler AND the free `.json`
-> endpoint are blocked — `reddit.com/...json` returns **HTTP 403** (bot-wall HTML) even from the
-> user's local residential IP. Unauthenticated Reddit is closed. Working access paths (in order):
-> 1. **Apify MCP** (recommended single add) — `APIFY_API_TOKEN`; unlocks Reddit Scraper (~$1.15/1k
->    posts) AND rating-distribution scrapers for Google/TripAdvisor/Booking + Michelin. ~$0–5/mo at
->    personal volume. One install covers Reddit + the distribution gap.
-> 2. **Official Reddit API via OAuth** — register a "script" app at reddit.com/prefs/apps (free,
->    100 QPM), wire via the **GridfireAI/reddit-mcp** server (`uvx reddit-mcp`, needs client_id/secret)
->    or a bundled PRAW script. Best for real-time, official, free. (Note: Nov-2025 Responsible Builder
->    Policy may gate brand-new app approvals.)
-> 3. **Dialog hosted reddit-research-mcp** (`claude mcp add --transport http
->    https://reddit-research-mcp.fastmcp.app/mcp`) — no Reddit creds, semantic index over 20k+ subs,
->    weekly refresh; queries go to a third-party host; freemium.
-> 4. **Claude-in-Chrome** — free, real-time, but manual/interactive. Good for spot checks.
-> The free `.json`/old.reddit trick no longer works — do not rely on it.
+## Reddit (Apify is the path — free access is DEAD)
+> ⚠️ **ENVIRONMENT REALITY (verified 2026-06):** unauthenticated Reddit is **closed**. The `.json`
+> endpoint AND old.reddit BOTH return **HTTP 403** (bot-wall HTML), and the research crawler is
+> blocked too — even from the user's local residential IP. **Do not append `.json`, do not rely on
+> old.reddit, do not WebFetch threads directly.** They no longer work as a data path.
+
+**WORKING PATH = Apify** (MCP connected as `apify`, or REST `api.apify.com/v2`). `trudax/reddit-scraper`
+(full) is a PAID rental (gated — "actor-is-not-rented"). Use a **free pay-per-use comment actor that
+returns score + permalink** — VERIFIED working 2026-06: **`clearpath/reddit-post-comments-bulk-scraper`**
+(~$0.001/comment, full comment trees) or `crawlerbros/reddit-comment-scraper` (explicit score). AVOID
+`trudax/reddit-scraper-lite` (no scores, no comments). ~9 vetted threads ≈ $0.30 on the free credits.
+
+**RELEVANCE (kill keyword noise — r/Oscars, r/Smite, the French town "Ponte Leccia", etc.):**
+- Seed the actor's `startUrls` with (a) **VETTED relevant thread permalinks** found via a first broad/
+  search pass, and (b) **subreddit-restricted search URLs**, e.g.
+  `https://www.reddit.com/r/ItalyTravel/search/?q=<terms>&restrict_sr=1&sort=relevance`.
+- Then apply a **relevance filter** = subreddit **allowlist** (ItalyTravel, tuscany, florence, travel,
+  solotravel, FATTravel, hotelsreviewed, wine, ItalianFood*… region-appropriate) **∪** on-topic
+  title/body terms, **MINUS** a noise **denylist** (off-topic/look-alike subs).
+
+**ACCURACY / WEIGHTING:** the comment actor returns real `score` per comment → weight every signal by
+upvote score (+ recency + cross-thread corroboration). Input: `postUrls` = the vetted threads,
+`maxCommentsPerPost:~30`, `sort:"top"`.
+
+**PROVENANCE / no fabrication:** every extracted Reddit claim MUST carry a resolving `permalink` and a
+**VERBATIM** quote that appears in the fetched corpus. Never paraphrase into a "Reddit said …" claim
+without the permalink + quote.
+
+Reference implementation in this repo:
+`best-options-research/runs/italy-2026/raw/apify_reddit_full.py`. Plus **Hacker News Algolia API**
+(free, no key) as an independent corroborating source.
 
 ## Social media
 - **YouTube: INCLUDE** — Data API (free, ~100 searches/day) + transcripts (long-form honest reviews).

@@ -27,7 +27,7 @@ Peak-End rule, satisficing, information foraging). This skill assembles them.
 
 ## Persistent state (READ FIRST, APPEND ALWAYS)
 
-State lives in `./best-finder-state/` (the conversation's working directory). In claude.ai this persists *within* a conversation/project but does NOT carry across separate chats — re-upload or paste your `USER-PROFILE.md` to resume. (In Claude Code this skill instead uses `~/.claude/best-finder/`.):
+State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
 - `USER-PROFILE.md` — durable, cross-trip: who the user is, taste tendencies, decision style,
   recurring constraints, interaction preferences.
 - `trips/<trip-id>.md` — the living needs doc for an active trip: context, interests,
