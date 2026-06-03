@@ -84,7 +84,7 @@ for the refined, allocated interests.
 | Stakes | Discovery | Verification (Phase 3.5 / verifier) |
 |---|---|---|
 | Low    | inline — de-biased top pick + one sanity check, no fan-out | gate only |
-| Medium | parallel readers (expert-curation, community, calibrated-crowd) | gate only |
+| Medium | parallel readers (expert-curation, community, calibrated-crowd) + `agents/strategy-researcher.md` (multi-interest/multi-leg) | gate only |
 | High   | readers + mandatory local-language reader + `agents/strategy-researcher.md` | gate + `agents/verifier.md` |
 
 Dispatch one reader per **independent source type** (see `agents/source-readers.md`). Each

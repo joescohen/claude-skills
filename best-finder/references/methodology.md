@@ -43,7 +43,7 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
 - **HIGH** — ≥3 independent types, rich + recent, converging → confident pick + evidence.
 - **MEDIUM** — 2 types / some text → recommend WITH explicit caveats; name what's missing.
 - **LOW** — 1 type, or thin/stale, or sources contradict → **do NOT fake a "best."** Say what's thin,
-  offer to dig (Chrome histogram / Reddit `.json` / Italian-language).
+  offer to dig (Chrome histogram / Reddit via Apify / Italian-language).
 Confidence is a **computed property of the inputs**, not a vibe. Degrade honestly in thin regions.
 
 ## Verification gate (ALWAYS-ON — between reader-return and scoring)
