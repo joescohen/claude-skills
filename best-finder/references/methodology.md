@@ -47,14 +47,23 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
 Confidence is a **computed property of the inputs**, not a vibe. Degrade honestly in thin regions.
 
 ## Verification gate (ALWAYS-ON — between reader-return and scoring)
-Relaying reader output is not verifying it. On EVERY run, before scoring or tagging, the
-conductor checks reader claims against ground truth:
+Relaying reader output is not verifying it. The gate binds each CLAIM to evidence that is
+(1) about the SAME entity, (2) individually resolvable, and (3) genuinely independent.
+On EVERY run, before scoring or tagging, the conductor checks reader claims against ground truth:
 - every load-bearing URL resolves (no 404 / redirect-to-home);
-- each candidate's scores trace to a real, cited listing;
-- `[VERIFIED]` only when ≥2 genuinely independent source TYPES are present (not two mirrors
-  of one crowd);
-- **citation sanity-check** — a mismatched/again-wrong URL demotes the claim to unverified.
+- **entity-resolution before counting** — a source type counts toward a candidate's convergence
+  ONLY if its evidence names that same candidate. If a datum (a ranking, a review, a list
+  placement) is about a different venue, it is dropped, never counted toward this candidate's
+  type total. Confirm the subject of each cited datum equals the candidate before it contributes.
+- **per-datum provenance** — every cited score/crowd datum (means, review counts, rankings,
+  list placements) carries its OWN resolvable link, or is explicitly marked unlinked. Unlinked
+  data may be shown for color but CANNOT count toward a type or support `[VERIFIED]`.
+- `[VERIFIED]` only when ≥2 genuinely independent source TYPES — each resolved to the SAME
+  entity with per-datum provenance — are present (not two mirrors of one crowd);
+- **citation sanity-check** — a mismatched/wrong-entity/again-wrong URL demotes the claim to unverified.
 Failed claims are demoted (surfaced in the sourcing-gaps panel), never silently dropped.
+The `[VERIFIED]` badge means exactly "passed THIS gate per-pick" — never assert more than the
+gate actually checked for that specific pick.
 
 ## Adversarial verifier (HIGH-stakes only — `agents/verifier.md`)
 On top of the gate, a BLIND skeptic subagent stress-tests each finalist. It sees only the

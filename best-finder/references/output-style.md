@@ -14,10 +14,14 @@ For each recommended option, give an **experiential picture**, not just metrics:
 Keep it vivid but **accurate** — flag anything unverified; never invent specifics.
 
 ## Provenance tags (every load-bearing claim)
-- **[VERIFIED]** ≥2 independent source TYPES converge
+- **[VERIFIED]** ≥2 independent source TYPES converge ON THE SAME ENTITY, each with its own
+  resolvable per-datum provenance — i.e. it passed the Phase 3.5 gate for THIS pick. The badge
+  asserts only what the gate checked per-pick; never word it to claim more.
 - **[SUPPORTED]** 1 strong source type, no contradiction
 - **[ASSUMED]** weak/inference — flag it
 - **[CONTESTED]** sources disagree — surface BOTH, don't hide
+Every cited score/crowd datum carries a resolvable link or is marked unlinked; unlinked data
+cannot earn [VERIFIED].
 
 ## Confidence tier (from the data-sufficiency gate)
 State HIGH / MEDIUM / LOW per recommendation. On LOW, do **not** fake a "best" — say what's thin and
@@ -37,27 +41,43 @@ not auto-disqualifying — judge on convergence.
 ## The "full-picture" HTML deliverable (DEFAULT final output)
 The final recommendation should be a **self-contained, browser-openable HTML page** — a full picture,
 not a chat blurb. A short chat summary is fine as a preface, but produce the HTML for any non-trivial
-recommendation. It MUST include, in this spirit:
-1. **Context strip** — the trip inputs (who/when/mode/budget/constraints).
-2. **"What I think you're looking for"** — general + specific-to-this-place (read from USER-PROFILE + strategy).
-3. **"What you should be looking for"** — the insider buying-criteria for this category/region (teach the user).
-4. **"How I scored"** — the anti-inflation rubric + the confidence-tier legend, in plain terms.
-5. **The pick** — full STORY (vibe + day-to-day reality incl. food/logistics) + calibrated crowd scores
-   (with review counts) + provenance tags + confidence badge + a fit verdict + flags.
-6. **Every alternative** — same treatment; each framed as "right for a different version of the trip."
-7. **Considered & set aside** — the contested/avoid picks, showing the method working (inflation traps, divergence).
-8. **A scorecard table** — all options side by side with confidence tiers.
+recommendation.
+
+**ORDERING RULE — answer first, supporting material below (NON-NEGOTIABLE).** Lead with the picks.
+The user wants to see *what to do* immediately, then the context/criteria/methodology/evidence that
+justifies it — never the reverse. Do NOT open with paragraphs of context, "what you're looking for,"
+or "how I scored." A page that buries the picks below the fold is wrong even if every section is present.
+
+Required sections, **in this exact order**:
+1. **Hero / context chips only** — a compact strip of who/when/mode/budget/constraints as chips in the
+   header. Minimal — orientation, not a section. No prose context block here.
+2. **The picks — painted** — THE ANSWER, up top. Group by job (e.g. "the one splurge" / "romantic-value
+   nights" / "hidden-gem" / "skip"). For the lead pick AND every alternative: full STORY (vibe +
+   day-to-day reality incl. food/logistics) + calibrated crowd scores (with review counts) + provenance
+   tags + confidence badge + fit verdict + flags. Each alternative framed as "right for a different
+   version of the trip." Put a **one-line confidence-tier key** at the top of this section so the badges
+   read immediately (the full rubric lives lower in "How I scored").
+3. **Scorecard table** — all options side by side with confidence tiers.
+4. **Considered & set aside** — the contested/avoid picks, showing the method working (inflation traps,
+   score↔text divergence).
+5. **Before you book** — the LOW-confidence / verify-first items, not faked.
+--- everything below this line is the supporting "why," placed AFTER the answer ---
+6. **"What I think you're looking for"** — general + specific-to-this-place (from USER-PROFILE + strategy).
+7. **"What you should be looking for"** — the insider buying-criteria for this category/region (teach the user).
+8. **"How I scored"** — the anti-inflation rubric + the full confidence-tier legend, in plain terms.
 9. **"How it all came together"** — the synthesis narrative + strategy reallocation.
-10. **"Before you book"** — the LOW-confidence items, not faked.
-11. **Evidence base** (don't bury it — sourcing is the thesis) — organized by **independent source
+10. **Evidence base** (don't bury it — sourcing is the thesis) — organized by **independent source
     TYPE** (expert/editorial · community/forums · crowd platforms · local-language · methodology/
     academic), with a **breadth count** (how many sources / types) and real links per type + per
     property. Plus an honest **sourcing-gaps panel**: what was thin or unreachable (e.g., Reddit is
     Chrome-only here; distributions need a Chrome read) and how to close it. NEVER let the displayed
     sources look single-platform — that mimics the inflation the tool exists to defeat.
-12. **Photos** — embed real inline images when possible (a Claude-in-Chrome screenshot pass of the
+11. **Photos** — embed real inline images when possible (a Claude-in-Chrome screenshot pass of the
     property gallery), otherwise prominent gallery links + offer to embed on request. Never hot-link
     images you can't verify (broken images cheapen it).
+Put a table-of-contents / jump-nav right after the hero so the deep "why" sections stay one click away
+despite sitting lower on the page.
 Style: clean editorial design, region-appropriate palette, score bars + confidence badges, print-friendly,
 inline CSS (no external deps). Save to `runs/<trip>/<query>.html` and send via SendUserFile.
-Reference implementation: `best-options-research/runs/italy-2026/tuscany-castles.html`.
+Reference implementation (visual style ONLY — its section *order* is superseded by the ordering rule
+above): `best-options-research/runs/italy-2026/tuscany-castles.html`.
