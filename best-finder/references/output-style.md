@@ -69,15 +69,21 @@ Required sections, **in this exact order**:
 10. **Evidence base** (don't bury it — sourcing is the thesis) — organized by **independent source
     TYPE** (expert/editorial · community/forums · crowd platforms · local-language · methodology/
     academic), with a **breadth count** (how many sources / types) and real links per type + per
-    property. Plus an honest **sourcing-gaps panel**: what was thin or unreachable (e.g., Reddit is
-    Chrome-only here; distributions need a Chrome read) and how to close it. NEVER let the displayed
-    sources look single-platform — that mimics the inflation the tool exists to defeat.
+    property. Plus an honest **sourcing-gaps panel**: what was genuinely thin (e.g., a venue with few
+    crowd reviews even after consolidation; an optional YouTube pass that found nothing). **A REQUIRED
+    source type may NEVER appear here as merely "unreachable, here's how to close it"** — required types
+    (incl. Reddit-via-Apify) must be retrieved, or, if their retrieval tool itself errored, the panel
+    states the exact recovery that was RUN and the specific block hit (not a fix you only described). A
+    "Reddit blocked — fix: the Apify actor ~$0.30" line is a defect, not an acceptable gap entry. NEVER
+    let the displayed sources look single-platform — that mimics the inflation the tool exists to defeat.
 11. **Photos** — embed real inline images when possible (a Claude-in-Chrome screenshot pass of the
     property gallery), otherwise prominent gallery links + offer to embed on request. Never hot-link
     images you can't verify (broken images cheapen it).
 Put a table-of-contents / jump-nav right after the hero so the deep "why" sections stay one click away
 despite sitting lower on the page.
 Style: clean editorial design, region-appropriate palette, score bars + confidence badges, print-friendly,
-inline CSS (no external deps). Save to `runs/<trip>/<query>.html` and send via SendUserFile.
+inline CSS (no external deps). Save to the PINNED deliverable base —
+`~/Engineering/projects/best-options-research/runs/<trip-id>/<query>.html` (absolute; see SKILL.md →
+Output locations — never a cwd-relative `runs/...` path) — and send via SendUserFile.
 Reference implementation (visual style ONLY — its section *order* is superseded by the ordering rule
 above): `best-options-research/runs/italy-2026/tuscany-castles.html`.
