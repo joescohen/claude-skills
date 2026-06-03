@@ -47,13 +47,14 @@ State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
 ## The pipeline
 
 ```
-STEP 0  Load state (profile + active trip)            ← always
-PHASE 1 Scope + Stakes (option-menus)
-PHASE 2 Destination Strategy   → references/strategy.md
-PHASE 3 Discovery (convergence engine)  → references/methodology.md + agents/
-PHASE 4 Data-Sufficiency Gate (confidence tiers)
-PHASE 5 Painted-picture output + critique-refine loop  → references/output-style.md
-(capture needs continuously across all phases)
+STEP 0    Load state (profile + active trip)            ← always
+PHASE 1   Scope + Stakes (option-menus)
+PHASE 2   Destination Strategy   → references/strategy.md + agents/strategy-researcher.md
+PHASE 3   Discovery (convergence engine)  → references/methodology.md + agents/
+PHASE 3.5 Verification gate (verify reader claims vs ground truth)  → references/methodology.md
+PHASE 4   Data-Sufficiency Gate (confidence tiers)
+PHASE 5   Painted-picture output + critique-refine loop  → references/output-style.md
+(capture needs continuously across all phases; conductor is the sole state-writer)
 ```
 
 ### PHASE 1 — Scope + Stakes (always option-menus)
@@ -72,14 +73,40 @@ Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended defau
 Before hunting venues, build the strategy: (A) "how to do X" consensus, (B) preference↔offering
 fit, (C) trip-level allocation across legs (capitalize where each excels; avoid redundancy/
 variety-penalty; Peak-End sequencing), (D) surface missing criteria the user didn't list.
-Present it; let the user adjust via menus. THEN discover venues for the refined, allocated interests.
+On MEDIUM/HIGH-stakes multi-interest or multi-leg trips, dispatch `agents/strategy-researcher.md`
+(one per region) to ground function (A) in real consensus before you present; on low-stakes
+single lookups, do (A) inline. Present it; let the user adjust via menus. THEN discover venues
+for the refined, allocated interests.
 
 ### PHASE 3 — Discovery (`references/methodology.md`, `agents/`)
-Dispatch one reader per **independent source type** in parallel (expert-curation, community,
-calibrated-crowd, + local-language / YouTube where relevant). Each returns candidates + raw
-signals + a self-reported richness. Use the **$0 data stack** in `references/data-sources.md`
-(native WebSearch/WebFetch → Jina → Claude-in-Chrome for the rating histogram → Reddit `.json`,
+**Stakes-scaled dispatch** (size the fleet off the Phase 1 stakes gate):
+
+| Stakes | Discovery | Verification (Phase 3.5 / verifier) |
+|---|---|---|
+| Low    | inline — de-biased top pick + one sanity check, no fan-out | gate only |
+| Medium | parallel readers (expert-curation, community, calibrated-crowd) | gate only |
+| High   | readers + mandatory local-language reader + `agents/strategy-researcher.md` | gate + `agents/verifier.md` |
+
+Dispatch one reader per **independent source type** (see `agents/source-readers.md`). Each
+returns candidates + raw signals + a self-reported richness, and writes a raw file. Use the
+**$0 data stack** in `references/data-sources.md` (native WebSearch/WebFetch → Jina →
+Claude-in-Chrome for the rating histogram → Apify for Reddit + rating distributions →
 YouTube). Reuse local hotel MCPs (trivago/DirectBooker) for stays.
+
+**Runtime:** in Claude Code, dispatch readers/verifier in parallel via the Agent tool; in
+claude.ai (no subagents), run the same reader/verifier prompts inline and sequentially. The
+verification gate and stakes-scaling are identical in both.
+
+### PHASE 3.5 — Verification gate (`references/methodology.md`)
+Between reader-return and scoring, the conductor verifies reader claims against ground truth
+— **on every run, not just high-stakes** (relaying ≠ verifying):
+- every load-bearing URL resolves (no 404 / redirect-to-home);
+- each candidate's scores trace to a real, cited listing;
+- `[VERIFIED]` is allowed only when ≥2 **genuinely independent** source TYPES are present
+  (two mirrors of one crowd don't count);
+- citation sanity-check — a mismatched/again-wrong URL demotes the claim to unverified.
+Failed claims are **demoted, not silently dropped** — surface them in the sourcing-gaps panel.
+Only verified inputs flow into the Phase 4 data-sufficiency scoring.
 
 ### PHASE 4 — Data-Sufficiency Gate (`references/methodology.md`)
 Score independence × depth × recency × convergence × distribution-obtained → HIGH / MEDIUM / LOW
@@ -95,6 +122,10 @@ Capture every reaction to state.
 ## Hard rules
 - Option-menus at every decision point. Never a blank "what do you want?"
 - Independent-source convergence over any single score. Read distribution where obtainable.
+- **Verify before synthesize.** Validate reader claims (URLs resolve, scores trace, ≥2 truly
+  independent types) at the Phase 3.5 gate before painting or tagging `[VERIFIED]`.
+- **Single-writer state.** Only the conductor writes `USER-PROFILE.md` / trip files; subagents
+  return data, never write state.
 - Geography-correct sources (e.g., Italy → Gambero Rosso / Osterie d'Italia / Italian-language;
   NOT Yelp). The "local-language = locals" heuristic INVERTS in some markets (China→Dianping,
   Korea→Naver) — see `references/data-sources.md`.
@@ -108,4 +139,6 @@ Capture every reaction to state.
 - `references/data-sources.md` — the $0 data stack, source maps, ToS posture.
 - `references/output-style.md` — painted-picture format + provenance + critique loop.
 - `agents/source-readers.md` — the parallel reader agent prompts.
+- `agents/strategy-researcher.md` — Phase-2A "how to do X" regional-consensus researcher.
+- `agents/verifier.md` — blind adversarial verifier (high-stakes finalist stress-test).
 - `scripts/score.py` — deterministic scoring (Bayesian shrinkage, within-platform percentile, convergence).
