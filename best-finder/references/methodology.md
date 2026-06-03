@@ -46,7 +46,19 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
   offer to dig (Chrome histogram / Reddit `.json` / Italian-language).
 Confidence is a **computed property of the inputs**, not a vibe. Degrade honestly in thin regions.
 
-## Adversarial verification (high-stakes only)
-A skeptic pass on the top pick: hunt the recurring dealbreaker in 1★/3★, manufactured-review tells,
-tourist-trap signals, "is this just a chain where the crowd score is already enough?", and a
-**citation sanity-check** (mismatched/again-wrong URLs → treat the claim as unverified).
+## Verification gate (ALWAYS-ON — between reader-return and scoring)
+Relaying reader output is not verifying it. On EVERY run, before scoring or tagging, the
+conductor checks reader claims against ground truth:
+- every load-bearing URL resolves (no 404 / redirect-to-home);
+- each candidate's scores trace to a real, cited listing;
+- `[VERIFIED]` only when ≥2 genuinely independent source TYPES are present (not two mirrors
+  of one crowd);
+- **citation sanity-check** — a mismatched/again-wrong URL demotes the claim to unverified.
+Failed claims are demoted (surfaced in the sourcing-gaps panel), never silently dropped.
+
+## Adversarial verifier (HIGH-stakes only — `agents/verifier.md`)
+On top of the gate, a BLIND skeptic subagent stress-tests each finalist. It sees only the
+candidate + evidence bundle (never the conductor's narrative), and tries to refute it: the
+recurring dealbreaker in 1★/3★, manufactured-review tells, tourist-trap signals, "is this
+just a chain where the crowd score is already enough?", plus its own citation sanity-check.
+The conductor reconciles its verdict against the gate before finalizing.
