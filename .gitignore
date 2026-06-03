@@ -1,6 +1,8 @@
 # Only track explicitly added skills — ignore everything else by default
 *
 !.gitignore
+!best-finder/
+!best-finder/**
 !ei-validate/
 !ei-validate/**
 !ei-skill-auditor/

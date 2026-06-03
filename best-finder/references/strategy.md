@@ -1,0 +1,57 @@
+# Destination-Strategy layer + the named-framework map
+
+A venue choice is **downstream** of a regional strategy the user usually doesn't have. Build the
+strategy FIRST, then discover venues for the refined, leg-allocated interests.
+
+## The four functions
+
+**A. "How to do X" consensus.** For a region, synthesize expert + community wisdom: what it's
+*uniquely best at* (ranked: world-class-here vs just-okay-here), the canonical way to structure a
+visit (base, day-trip patterns, pace, logistics), the "if you only do 3 things," and common
+mistakes/regrets. (This is a best-finder query at the *experience-category* level.)
+
+**B. Preference ↔ Offering fit.** Score how strongly the region delivers each of the user's stated
+interests (S/A/B/C), grounded in the synthesis — not assumed.
+
+**C. Trip-level allocation (portfolio).** Across ALL legs, assign each interest to the leg that does
+it best so the user **capitalizes** where a region excels and no leg is wasted on what another does
+better. Apply a **variety penalty** (don't repeat an activity *type* across legs — hedonic
+adaptation) and **Peak-End sequencing** (engineer one peak per leg; place the high-variance leg
+before a reliably-great *final* leg; end strong — remembered quality ≈ peak + ending, not duration).
+
+**D. Missing-criteria surfacing.** Proactively propose dimensions the user did NOT list but should,
+given offerings + consensus + context. Techniques:
+- **Value-Focused Thinking (Keeney) — WITI / wish-list:** ask "why is that important?" to climb to
+  ends; over-generate objectives. ("You said wine — is it the tasting, the scenery, the harvest, the
+  romance?")
+- **Kano delighters:** present candidate surprise attributes and gauge reaction (things users never
+  ask for but love — e.g., sunset aperitivo in the vines, a vintage Fiat 500 morning).
+- **Constructive elicitation:** when a preference can't be explained by existing criteria, add a new
+  criterion dimension.
+
+## Governing principle
+**Stated preferences are INPUTS, not the full weight set.** Expand them with what the place is known
+for + what others recommend, and *reallocate* across the trip. The difference between "rank options"
+and "help me plan a great trip."
+
+## The named-framework map (this skill assembles these)
+- **Conversational / critique-based recommender (Pu & Chen)** — the show→react→refine loop;
+  **compound critiquing** = YOU generate the multi-attribute critique menus, not the user.
+- **Preference Construction (Slovic; Payne et al.)** — people build preferences by reacting to options
+  → show-first, not questionnaire-first.
+- **Value-Focused Thinking (Keeney) / Kano / Constructive Preference Elicitation** — surface
+  unstated criteria (function D).
+- **MCDA / MAUT (AHP, TOPSIS, weighted-sum)** — the fit + ranking math.
+- **Tourist Trip Design Problem / Team Orienteering w/ time-windows + category constraints** — the
+  formal model behind trip-level allocation (function C). Maximize value across legs under
+  time budgets with "each leg covers what it's best at."
+- **Peak-End rule (Kahneman) + variety-seeking / hedonic adaptation** — sequencing (function C).
+- **Satisficing vs maximizing (Simon, Schwartz) + choice architecture (Thaler/Sunstein)** — the
+  stakes gate + output framing (few good-enoughs + a default vs the full ranked field).
+- **Recognition-Primed Decision (Klein)** — cold-start by offering a *prototype* to react to.
+- **Regret-efficient elicitation (Boutilier) + Information Foraging (Pirolli)** — ask the one question
+  that most cuts uncertainty; stop eliciting when marginal preference-signal drops, then recommend.
+
+## Interaction
+Present the strategy (A–D) via option-menus; let the user accept/override the fit and allocation, and
+adopt any surfaced missing-criteria as new interests. THEN run discovery for the refined interest set.
