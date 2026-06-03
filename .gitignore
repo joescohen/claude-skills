@@ -1,6 +1,9 @@
 # Only track explicitly added skills — ignore everything else by default
 *
 !.gitignore
+# Project design docs / specs
+!docs/
+!docs/**
 !best-finder/
 !best-finder/**
 !ei-validate/
