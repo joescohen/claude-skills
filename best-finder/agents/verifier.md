@@ -13,7 +13,8 @@ re-fetch sources).
   sub-scores, the rating distribution/histogram if obtained, the source TYPES claimed, and
   the verbatim text snippets the readers relied on.
 - The category/region buying-criteria (so it knows what "good" means here).
-- Output path: `runs/<trip>/raw/verify-<candidate>.md`.
+- Output path (PINNED, absolute — see SKILL.md → Output locations):
+  `~/Engineering/projects/best-options-research/runs/<trip-id>/raw/verify-<candidate>.md`.
 
 ## Task — try to REFUTE the pick
 Default to skepticism; the burden is on the evidence to survive. Hunt:

@@ -8,7 +8,8 @@ Use `compound-engineering:ce-web-researcher` for web readers; `general-purpose` 
 
 Shared context to inject into every reader: the query, location, dates/seasonality, party + mode +
 budget (from the user's needs file), the geography-correct source list (data-sources.md), and the
-output path `runs/<trip>/raw/<type>-<query>.md`.
+output path (PINNED, absolute — see SKILL.md → Output locations)
+`~/Engineering/projects/best-options-research/runs/<trip-id>/raw/<type>-<query>.md`.
 
 ---
 ## Expert-curation reader
@@ -22,8 +23,17 @@ affiliate/SEO listicles. Cite every claim with a URL. Return a dense digest rank
 convergence × mode-fit); separate value vs splurge; self-grade source quality; note gaps.
 
 ## Community / insider reader
-Mine Reddit via Apify (see `references/data-sources.md` — unauthenticated `.json`/old.reddit are dead;
-seed the comment scraper with vetted thread permalinks found via `site:reddit.com` search), HN Algolia, geography-correct forums + trusted writers for
+**Reddit is a REQUIRED source, retrieved via Apify — never a fallback note.** Because the `apify` MCP
+tools are connected to the CONDUCTOR session (not dispatched subagents), the **conductor runs the Reddit
+retrieval directly** and injects the resulting comment corpus into this reader; a delegated reader without
+MCP access must NOT substitute a "Reddit blocked" note. **Primary path is self-seeding in one call:** run
+the verified discovery+comments actor with `searchSubreddit` + `searchQuery` + `includeComments` (see
+`references/data-sources.md`) — it searches the subreddit AND returns comment bodies + permalinks with no
+web-search prerequisite, so it cannot be defeated by an empty `site:reddit.com` pass. Vetted thread
+permalinks found via web search are OPTIONAL enrichment, never the gate. If the actor itself errors, report the
+exact actor + error per the required-source terminal-state rule (SKILL.md) — do not narrate a fix you
+didn't run. See `references/data-sources.md` (unauthenticated `.json`/old.reddit are dead — 403). Plus
+HN Algolia, geography-correct forums + trusted writers for
 what in-the-know travelers ACTUALLY recommend for THIS mode — and what they WARN is overrated /
 tourist-trap / wedding-factory / too-remote. Capture named candidates with convergence (how many
 independent voices) + example URLs, value hidden-gems, an explicit OVERRATED/AVOID list, and insider

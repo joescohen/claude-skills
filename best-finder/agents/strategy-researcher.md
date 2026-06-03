@@ -10,7 +10,8 @@ multi-interest or multi-leg trips; skip for a single low-stakes venue lookup.
 - Region(s) + dates/seasonality, the party + mode + budget (from the needs file), and the
   user's stated interests so far.
 - The geography-correct source list (references/data-sources.md).
-- Output path: `runs/<trip>/raw/strategy-<region>.md`.
+- Output path (PINNED, absolute — see SKILL.md → Output locations):
+  `~/Engineering/projects/best-options-research/runs/<trip-id>/raw/strategy-<region>.md`.
 
 ## Task — synthesize expert + community wisdom into a regional strategy brief
 1. **What the region is uniquely best at** — ranked world-class-here vs just-okay-here, so

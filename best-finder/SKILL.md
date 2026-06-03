@@ -44,6 +44,19 @@ State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
 4. Treat stated preferences as **inputs, not the full weight set** — expand them with what the
    place offers and what experts recommend (see strategy layer), and reallocate across the trip.
 
+## Output locations (PINNED — two buckets, never scatter)
+Every file this skill writes goes to exactly one of two fixed locations. Use ABSOLUTE paths — NEVER a
+cwd-relative `runs/...` (relative paths scatter output by whatever directory the run happened to start in,
+which is the bug this rule exists to prevent). `<trip-id>` matches the state trip file (e.g. `italy-2026`,
+`charleston-2026`).
+- **State (read at STEP 0, written continuously):** `~/.claude/best-finder/` — `USER-PROFILE.md` +
+  `trips/<trip-id>.md` ONLY. No HTML, no raw research here.
+- **Deliverables + raw research (the pinned deliverable base):**
+  `~/Engineering/projects/best-options-research/runs/<trip-id>/`
+  - HTML full-picture page → `…/<trip-id>/<query>.html`
+  - every raw reader / strategy / verifier file → `…/<trip-id>/raw/<type>-<query>.md`
+  This base is the single source of truth for the path; the agent prompts and output-style.md reference it.
+
 ## The pipeline
 
 ```
@@ -90,6 +103,16 @@ Chrome rating-distribution histogram + the geography-correct crowd aggregator), 
 for any non-English destination. Breadth is not escalation-gated; the small Apify cost is an
 accepted default. Skip a type only on explicit user opt-out, and then surface the skip in the
 sourcing-gaps panel — never defer a type silently.
+
+**Required-source terminal states (no third option).** A required source type may end a run in exactly
+two states: (a) **data retrieved**, or (b) **recovery attempted and the specific block described** (what
+you ran, the exact tool/error that stopped it). A **technical failure is NOT an opt-out skip** — a 403, a
+dead endpoint, or an empty seed search obligates you to run the documented recovery (for Reddit: the Apify
+comment actor, self-seeded via subreddit-restricted search URLs — see `references/data-sources.md`) BEFORE
+producing output. Shipping a "here's the fix I didn't run" note (e.g. "Reddit blocked — fix: the Apify
+actor ~$0.30") **as a deliverable is disallowed**: if you can name the recovery, you must execute it, not
+describe it. The conductor (not a dispatched reader) owns Reddit retrieval, because the `apify` MCP tools
+are connected to the conductor session — a delegated reader without MCP access cannot satisfy this floor.
 
 **Stakes scales DEPTH and adversarial verification, not breadth** (size the fan-out off the Phase 1
 stakes gate):
