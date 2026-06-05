@@ -18,7 +18,9 @@ multi-interest or multi-leg trips; skip for a single low-stakes venue lookup.
    interests can be allocated to where they actually pay off. Ground every claim in a source.
    Distill this into the leg's **experiential monopoly**: the ONE thing only this region gives, its
    **feeling/verb** (the emotion + action — e.g. look · taste · feel · awe), and **what it is NOT
-   for** (so the conductor can compute the "don't-duplicate" across legs).
+   for** (so the conductor can compute the "don't-duplicate" across legs). Also **propose the leg's
+   place-archetype** (rural-wine · rural-other · city · coast/island · alpine · desert · urban-beach ·
+   other) — the conductor needs it for Phase 1.5 value-instantiation (`references/preference-model.md`).
 2. **Canonical way to structure a visit** — where to base, day-trip patterns, realistic pace,
    key logistics (drive times, when things close, seasonality traps). Include **how many days the
    region rewards** before diminishing returns, and the **realistic minimum** to capture its
@@ -32,7 +34,7 @@ multi-interest or multi-leg trips; skip for a single low-stakes venue lookup.
 
 ## Return (dense digest — the conductor turns it into the strategy menus)
 - Ranked "uniquely-best-at" list with source URLs per claim.
-- **Leg-identity line:** the single experiential monopoly + feeling/verb + what the region is NOT for.
+- **Leg-identity line:** the single experiential monopoly + feeling/verb + what the region is NOT for + the proposed **place-archetype**.
 - Visit-structure synthesis (base options, day-trip map, pace, logistics) with sources.
 - **Day-reward:** how many days the region rewards + the minimum to capture its monopoly (for function E).
 - "If you only do 3 things" + the overrated/avoid list.
