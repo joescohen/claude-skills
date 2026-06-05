@@ -6,7 +6,9 @@ strategy FIRST, then discover venues for the refined, leg-allocated interests.
 On multi-leg / MEDIUM+ trips this layer runs as the staged **Trip Architecture** protocol
 (PAINT→ELICIT→LOCK) — present the per-leg possibility space, draw out the user's own arc, then lock a
 canonical arc the rest of the trip anchors to. Recipe: `references/trip-architecture.md`. It scales
-down to inline function-A on single-leg / low-stakes lookups.
+down to inline function-A on single-leg / low-stakes lookups. It is fed by **Phase 1.5 Value
+Instantiation** (`references/preference-model.md`), which renders the user's durable L1 values into this
+trip's criteria per place-archetype before the strategy is built.
 
 ## The four functions
 
@@ -36,7 +38,9 @@ given offerings + consensus + context. Techniques:
 - **Inference guard (means→end, load-bearing only):** the SAME "why is that important?" climb, fired
   defensively against the skill's OWN inferred filters — before benching an otherwise-strong option on
   an attribute the user never stated, surface the proxy-vs-value choice as a menu and rebuild from the
-  value. Full procedure + trigger: `references/trip-architecture.md`.
+  value. It is the load-bearing case of **ladder-up-on-capture** (the durable value goes to L1); its
+  sibling is the **don't-transplant guard** (don't copy a prior leg's shape onto a new archetype). Full
+  procedures: `references/trip-architecture.md` + `references/preference-model.md`.
 
 **E. Day-budget (portfolio over time).** Given the total trip days, propose a per-leg night split:
 weight each leg by (its monopoly strength × the user's interest fit from B), respect realistic
