@@ -54,6 +54,7 @@ which is the bug this rule exists to prevent). `<trip-id>` matches the state tri
 - **Deliverables + raw research (the pinned deliverable base):**
   `~/Engineering/projects/best-options-research/runs/<trip-id>/`
   - HTML full-picture page → `…/<trip-id>/<query>.html`
+  - Trip Architecture arc-board → `…/<trip-id>/<trip-id>-arc.html`
   - every raw reader / strategy / verifier file → `…/<trip-id>/raw/<type>-<query>.md`
   This base is the single source of truth for the path; the agent prompts and output-style.md reference it.
 
@@ -62,7 +63,7 @@ which is the bug this rule exists to prevent). `<trip-id>` matches the state tri
 ```
 STEP 0    Load state (profile + active trip)            ← always
 PHASE 1   Scope + Stakes (option-menus)
-PHASE 2   Destination Strategy   → references/strategy.md + agents/strategy-researcher.md
+PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  → references/strategy.md + references/trip-architecture.md + agents/strategy-researcher.md
 PHASE 3   Discovery (convergence engine)  → references/methodology.md + agents/
 PHASE 3.5 Verification gate (verify reader claims vs ground truth)  → references/methodology.md
 PHASE 4   Data-Sufficiency Gate (confidence tiers)
@@ -87,14 +88,19 @@ Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended defau
 - **Cold-start tip (prototype-anchoring):** if the user is unsure, offer a *prototype* to react to
   ("a trip like X") rather than a blank preference form — people construct preferences by reacting.
 
-### PHASE 2 — Destination Strategy (`references/strategy.md`)
+### PHASE 2 — Destination Strategy → Trip Architecture (`references/strategy.md`, `references/trip-architecture.md`)
 Before hunting venues, build the strategy: (A) "how to do X" consensus, (B) preference↔offering
 fit, (C) trip-level allocation across legs (capitalize where each excels; avoid redundancy/
-variety-penalty; Peak-End sequencing), (D) surface missing criteria the user didn't list.
+variety-penalty; Peak-End sequencing), (D) surface missing criteria the user didn't list,
+(E) day-budget — split the total days across legs, weighted by monopoly strength × interest fit.
 On MEDIUM/HIGH-stakes multi-interest or multi-leg trips, dispatch `agents/strategy-researcher.md`
-(one per region) to ground function (A) in real consensus before you present; on low-stakes
-single lookups, do (A) inline. Present it; let the user adjust via menus. THEN discover venues
-for the refined, allocated interests.
+(one per region) to ground functions (A)+(E) in real consensus, then run the **3-beat Trip
+Architecture protocol** (`references/trip-architecture.md`): **PAINT** the per-leg possibility space
+as a Leg-Identity board (monopoly · feeling/verb · don't-duplicate · days · candidate experiences ·
+view · Peak-End) — shown, not asked; **ELICIT** the user's own arc via critique menus + the inference
+guard; **LOCK** the agreed arc to a canonical `## Trip Architecture` section + render the visual
+arc-board deliverable. On low-stakes single lookups, do (A) inline — no board, no beats. THEN
+discover venues for the refined, allocated interests; every per-leg query re-anchors to the locked arc.
 
 ### PHASE 3 — Discovery (`references/methodology.md`, `agents/`)
 **Coverage floor (every run, regardless of stakes):** dispatch one reader for EACH independent
@@ -160,6 +166,11 @@ Capture every reaction to state.
 
 ## Hard rules
 - Option-menus at every decision point. Never a blank "what do you want?"
+- **Inference guard (load-bearing only).** Before benching an otherwise-strong option on a constraint
+  the user did NOT state, climb means→end and surface the proxy-vs-value choice as a reactable menu —
+  never silently filter on your own inference (see `references/trip-architecture.md`).
+- **Re-anchor per-leg work to the locked arc.** Once `## Trip Architecture` exists, open each per-leg
+  answer with that leg's job and weigh the pick against it.
 - Independent-source convergence over any single score. Read distribution where obtainable.
 - **Verify before synthesize.** Validate reader claims (URLs resolve, scores trace, ≥2 truly
   independent types) at the Phase 3.5 gate before painting or tagging `[VERIFIED]`.
@@ -174,7 +185,8 @@ Capture every reaction to state.
 
 ## References (load as needed)
 - `references/methodology.md` — convergence engine, anti-inflation scoring, data-sufficiency gate.
-- `references/strategy.md` — destination-strategy layer + the named-framework map.
+- `references/strategy.md` — destination-strategy layer (functions A–E) + the named-framework map.
+- `references/trip-architecture.md` — the staged Trip Architecture protocol (PAINT→ELICIT→LOCK), the inference guard, the Leg-Identity board + state schema, the visual arc-board template.
 - `references/data-sources.md` — the $0 data stack, source maps, ToS posture.
 - `references/output-style.md` — painted-picture format + provenance + critique loop.
 - `agents/source-readers.md` — the parallel reader agent prompts.
