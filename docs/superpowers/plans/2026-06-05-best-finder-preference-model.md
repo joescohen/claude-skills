@@ -150,6 +150,8 @@ PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  �
 
 - [ ] **Step 2: Persistent-state — document the L1/L2/L3 layering**
 
+> ⚠️ Keep the first line (`State lives at ~/.claude/best-finder/ and SURVIVES across sessions:`) BYTE-EXACT — it is the `build-chat-zip.py` STATE anchor. Add the layered framing as a SEPARATE following line; NEVER modify the anchor line itself, or the claude.ai build breaks.
+
 Old:
 ```
 State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
@@ -160,8 +162,8 @@ State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
 ```
 New:
 ```
-State lives at `~/.claude/best-finder/` and SURVIVES across sessions, structured as a **layered
-preference model** (L1/L2/L3 — see `references/preference-model.md`):
+State lives at `~/.claude/best-finder/` and SURVIVES across sessions:
+It is a **layered preference model** (L1/L2/L3 — see `references/preference-model.md`):
 - `USER-PROFILE.md` — durable, cross-trip: **L1 core values** (place-agnostic) + the **L2 context-shape
   mapping** (`value × place-archetype → criteria`, append-only) + who the user is, taste tendencies,
   decision style, recurring constraints, interaction preferences.
@@ -252,7 +254,7 @@ New:
 Run:
 ```bash
 cd /home/joescohen/Engineering/projects/claude-skills
-for p in "PHASE 1.5 Value Instantiation (L1" "### PHASE 1.5 — Value Instantiation" "L1 core values\*\* (place-agnostic)" "Ladder up on capture:" "Don't transplant the shape." "Inference guard = load-bearing laddering" "preference-model.md — the layered"; do
+for p in "PHASE 1.5 Value Instantiation (L1" "### PHASE 1.5 — Value Instantiation" "L1 core values\*\* (place-agnostic)" "Ladder up on capture:" "Don't transplant the shape." "Inference guard = load-bearing laddering" "append-only L2 learning."; do
   printf '%2s  %s\n' "$(grep -c "$p" best-finder/SKILL.md)" "$p"
 done
 echo "build STATE anchor: $(grep -c 'State lives at `~/.claude/best-finder/` and SURVIVES across sessions:' best-finder/SKILL.md)  (exp 1)"
