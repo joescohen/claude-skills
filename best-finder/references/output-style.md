@@ -32,6 +32,9 @@ After presenting, invite reaction and offer the critiques AS MENUS (you generate
 "more like this but [cheaper / more local / closer / quieter / more adventurous]?" Each reaction →
 refine the shortlist AND **append the revealed preference to the user's needs file** (continuous
 capture). This is how preferences get constructed — by reacting to real options.
+**Fire the inference guard here too:** if you are about to drop an otherwise-strong option on an
+attribute the user never stated, don't — surface the proxy-vs-value choice as a menu and rebuild from
+the value (means→end; see `references/trip-architecture.md`).
 
 ## Decisions & honesty
 Surface open decisions (e.g., base location, splurge allocation) for the USER to make — don't silently
@@ -42,6 +45,11 @@ not auto-disqualifying — judge on convergence.
 The final recommendation should be a **self-contained, browser-openable HTML page** — a full picture,
 not a chat blurb. A short chat summary is fine as a preface, but produce the HTML for any non-trivial
 recommendation.
+
+> **Distinct from the Phase-2 arc-board.** On multi-leg trips Phase 2 also produces a *Trip
+> Architecture arc-board* (`references/trip-architecture.md`): the arc-board answers **"what is each
+> leg for"** (monopoly · feeling · days, leg by leg); this full-picture page answers **"which specific
+> option"** per leg. The arc precedes the per-leg picks.
 
 **ORDERING RULE — answer first, supporting material below (NON-NEGOTIABLE).** Lead with the picks.
 The user wants to see *what to do* immediately, then the context/criteria/methodology/evidence that
