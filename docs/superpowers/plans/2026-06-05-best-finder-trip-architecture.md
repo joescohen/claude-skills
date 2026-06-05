@@ -449,7 +449,7 @@ grep -c "how many days the" best-finder/agents/strategy-researcher.md
 grep -c "Leg-identity line:" best-finder/agents/strategy-researcher.md
 grep -c "Day-reward:" best-finder/agents/strategy-researcher.md
 ```
-Expected: each prints `1`.
+Expected: `experiential monopoly` → `2` and `how many days the` → `2` (each phrase appears in its task item AND its Return bullet — both intended); `Leg-identity line:` → `1`; `Day-reward:` → `1`. A `0` anywhere means an edit was missed.
 
 - [ ] **Step 5: Commit**
 
@@ -671,7 +671,7 @@ cd /home/joescohen/Engineering/projects/claude-skills
 test -f best-finder/references/trip-architecture.md && echo "recipe OK"
 grep -c "Beat 2 — ELICIT" best-finder/references/trip-architecture.md
 grep -c "E. Day-budget (portfolio over time)" best-finder/references/strategy.md
-grep -c "experiential monopoly" best-finder/agents/strategy-researcher.md
+grep -c "Leg-identity line:" best-finder/agents/strategy-researcher.md
 grep -c "3-beat Trip" best-finder/SKILL.md
 grep -c "Fire the inference guard here too" best-finder/references/output-style.md
 ```
