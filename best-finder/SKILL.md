@@ -99,7 +99,7 @@ for the refined, allocated interests.
 ### PHASE 3 — Discovery (`references/methodology.md`, `agents/`)
 **Coverage floor (every run, regardless of stakes):** dispatch one reader for EACH independent
 source type — expert/editorial, community (incl. Reddit via Apify), calibrated-crowd (incl. the
-Chrome rating-distribution histogram + the geography-correct crowd aggregator), and local-language
+Apify Google-Maps rating-distribution histogram + the geography-correct crowd aggregator), and local-language
 for any non-English destination. Breadth is not escalation-gated; the small Apify cost is an
 accepted default. Skip a type only on explicit user opt-out, and then surface the skip in the
 sourcing-gaps panel — never defer a type silently.
@@ -128,8 +128,9 @@ The Phase 3.5 verification gate runs on EVERY run at every stakes level (relayin
 Dispatch one reader per **independent source type** (see `agents/source-readers.md`). Each
 returns candidates + raw signals + a self-reported richness, and writes a raw file. Use the
 **$0 data stack** in `references/data-sources.md` (native WebSearch/WebFetch → Jina →
-Claude-in-Chrome for the rating histogram → Apify for Reddit + rating distributions →
-YouTube). Reuse local hotel MCPs (trivago/DirectBooker) for stays.
+Apify for Reddit + the Google-Maps histogram & images (`scrapePlaceDetailPage:true`) →
+Claude-in-Chrome as the fallback for walls / non-Google distributions → YouTube). Reuse local
+hotel MCPs (trivago/DirectBooker) for stays.
 
 **Runtime:** in Claude Code, dispatch readers/verifier in parallel via the Agent tool; in
 claude.ai (no subagents), run the same reader/verifier prompts inline and sequentially. The
@@ -148,7 +149,7 @@ Only verified inputs flow into the Phase 4 data-sufficiency scoring.
 
 ### PHASE 4 — Data-Sufficiency Gate (`references/methodology.md`)
 Score independence × depth × recency × convergence × distribution-obtained → HIGH / MEDIUM / LOW
-confidence. **LOW → do not fake a "best"**; say what's thin and offer to dig (Chrome/Reddit).
+confidence. **LOW → do not fake a "best"**; say what's thin and offer to dig (Apify histogram/Reddit).
 
 ### PHASE 5 — Output + refine (`references/output-style.md`)
 Paint the **experiential picture** of each option (vibe + day-to-day reality incl. food/logistics

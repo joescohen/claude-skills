@@ -43,7 +43,10 @@ authority by nature — grade accordingly; prize cross-thread convergence. Retur
 ## Calibrated-crowd reader
 For the specific named candidates, gather crowd signal across the right platforms (geography-aware),
 CALIBRATED within-platform (Booking 1–10, Google/TA means + REVIEW COUNTS + recency + sub-scores).
-Get the rating DISTRIBUTION where visible (use Claude-in-Chrome for the histogram — no API exposes it).
+Get the rating DISTRIBUTION: for Google, pull it as structured per-star counts via Apify
+(`compass/crawler-google-places` + `scrapePlaceDetailPage:true` → `reviewsDistribution`; also yields
+`imageUrls` + a "tourist trap" `reviewsTags` tally — see `references/data-sources.md`); use Claude-in-Chrome
+only as a FALLBACK for sources whose actor doesn't expose the breakdown.
 Surface recurring praise AND recurring complaints; flag where the headline score and the complaint
 text DIVERGE (the key tell). Flag thin/low-volume listings as inflation risks — BUT for a real,
 nameable venue, first attempt to resolve/consolidate its OTHER listings (name variants, relocation,

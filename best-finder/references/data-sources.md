@@ -9,12 +9,42 @@ Personal use → ~zero paid APIs needed. Cost target: $0 for typical volume.
   (food blogs, SPA share links). Does NOT bypass anti-bot.
 - **Tier 2 — Tavily/Exa (free tiers) or Serper.dev ($0 first 2,500):** semantic discovery if native
   search misses.
-- **Tier 3 — Claude-in-Chrome MCP ($0, your browser):** the escape hatch for login-walled / anti-bot
-  pages — **this is how you read the rating DISTRIBUTION histogram** off Google/Yelp/TripAdvisor/
-  Booking that no API exposes. Real fingerprint, real cookies.
+- **Tier 3 — Claude-in-Chrome MCP ($0, your browser):** the **fallback** escape hatch for login-walled /
+  anti-bot pages whose Apify actor does NOT expose the breakdown (some Yelp/TripAdvisor/Booking surfaces).
+  Real fingerprint, real cookies. ⚠️ **For Google, Chrome is NOT needed for the histogram** — Apify's
+  Google Maps scraper returns the per-star distribution as structured numbers (see "Google Maps histogram +
+  images" below). Reach for Chrome only when no actor returns the breakdown for a given source.
 - **Stays:** reuse local hotel MCPs — trivago (`search-suggestions`→`accommodation-search`) and
   DirectBooker (`hotel-search`/`hotel-details`; emit its `golden_link` verbatim). Note DirectBooker
   favors bookable/branded inventory (survivorship bias) — don't equate "bookable" with "best."
+
+## Google Maps histogram + images (Apify is the PRIMARY path — Chrome is fallback only)
+> ✅ **VERIFIED LIVE 2026-06** (run `6jMBDFuUegYs8H4df`, All'Antico Vinaio / Florence, 21s, ~$0.02): the
+> rating DISTRIBUTION and place photos come back as **structured fields** — no Chrome screenshot/OCR needed.
+
+**Actor = `compass/crawler-google-places`** ("Google Maps Scraper", `apify` MCP). Pass `searchStringsArray`
+(the place name) + `locationQuery` (`"City, Country"`) + `maxCrawledPlacesPerSearch: 1`, and — **critically**
+— **`scrapePlaceDetailPage: true`** (the histogram, `reviewsTags`, popular-times, opening hours, and hotel
+fields are ALL gated behind this flag; without it you get only `totalScore` + `reviewsCount`). For photos add
+**`maxImages: N`** (e.g. 5–10). Set `maxReviews: 0` unless you also want review text (it costs extra per place).
+
+Fields returned (place-level, structured):
+- **`reviewsDistribution`** = `{ oneStar, twoStar, threeStar, fourStar, fiveStar }` — THE histogram, as counts.
+  In the live run: `{1522, 1164, 2751, 7215, 34050}` on 46,702 reviews / 4.5★ → feed straight into the
+  bimodal/inflation check (methodology.md). No mean-only fallback, no UI reading.
+- **`imageUrls`** = array of direct `lh3.googleusercontent.com` photo URLs (1920×1080) + **`imagesCount`** —
+  use for the inline photo gallery in the HTML output (output-style.md), no Chrome screenshot pass.
+- **`reviewsTags`** = `[{title, count}]` — Google's own aggregated review themes, and it **literally tallies
+  "tourist trap"** (478 in the live run) alongside "the queue" (3046) etc. A direct, free trap signal.
+- Bonus: `popularTimesHistogram` (busy-by-hour), `additionalInfo` (atmosphere/crowd/offerings), `price`.
+
+**Cost:** base ~$4/1,000 places + the detail-page add-on; a handful of finalist places is a few cents on the
+free credits — an accepted default, never a reason to skip. **Run via the CONDUCTOR** (the `apify` MCP is on
+the conductor session, not dispatched readers — same rule as Reddit below).
+
+**Scope caveat:** this is **Google Maps specifically**. Yelp / TripAdvisor / Booking have their own actors and
+the per-star breakdown is NOT guaranteed on each — when a source's actor doesn't return the distribution, THEN
+fall back to Tier-3 Claude-in-Chrome to read it off the rendered UI.
 
 ## Reddit (Apify is the path — free access is DEAD)
 > ⚠️ **ENVIRONMENT REALITY (verified 2026-06):** unauthenticated Reddit is **closed**. The `.json`

@@ -29,9 +29,12 @@ text-required crowd ≫ star-only crowd.
 
 ## Distribution = the key anti-fraud signal
 A bimodal distribution (flood of 5★ + retaliatory 1★) reveals manipulation; a normal-ish spread
-~3.8–4.4 is often more trustworthy than a tight all-5★ low-volume listing. **No mainstream API
-exposes the histogram** → read it off the UI with Claude-in-Chrome (see data-sources.md). If you
-can only get the mean, say so and lower confidence.
+~3.8–4.4 is often more trustworthy than a tight all-5★ low-volume listing. **For Google, pull the
+histogram as structured per-star counts via Apify** (`compass/crawler-google-places` with
+`scrapePlaceDetailPage: true` → `reviewsDistribution` — verified live 2026-06; see data-sources.md);
+its `reviewsTags` even tallies "tourist trap" directly. **Claude-in-Chrome is the FALLBACK** only for
+sources whose actor doesn't expose the breakdown (some Yelp/TripAdvisor/Booking surfaces). If you can
+only get the mean, say so and lower confidence.
 
 ## Fake-signal tells (client-side usable)
 Single-review accounts; uniform-sounding reviews ("great food, great service, great atmosphere");
@@ -43,7 +46,7 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
 - **HIGH** — ≥3 independent types, rich + recent, converging → confident pick + evidence.
 - **MEDIUM** — 2 types / some text → recommend WITH explicit caveats; name what's missing.
 - **LOW** — 1 type, or thin/stale, or sources contradict → **do NOT fake a "best."** Say what's thin,
-  offer to dig (Chrome histogram / Reddit via Apify / Italian-language). LOW/thin may be assigned
+  offer to dig (Apify Google-Maps histogram / Reddit via Apify / Italian-language). LOW/thin may be assigned
   ONLY after an entity-consolidation attempt (Verification gate, consolidate direction): a thin
   reading of a single listing is not a LOW footprint until the canonical-listing search has been
   run and still comes back thin. A candidate the user introduced (already on their itinerary/list)
