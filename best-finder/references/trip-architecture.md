@@ -11,9 +11,12 @@ The **inference guard** (below) is the one part that is always live, because it 
 fires.
 
 ## Beat 1 — PAINT (show the possibility space; don't ask)
-After the strategy-researcher returns (one per region), present the WHOLE arc at once — every leg side
-by side — as the **Leg-Identity board**. This is the user's "environment to play in," shown so they
-**construct preferences by reacting** (not a blank questionnaire). Fill every column for each leg:
+After the strategy-researcher returns (one per region) and **Phase 1.5 has instantiated each leg's values**
+(`references/preference-model.md`), present the WHOLE arc at once — every leg side by side — as the
+**Leg-Identity board**. Its criteria ARE the Phase-1.5 output: the candidate-experiences and feeling
+columns are the user's **L1 values instantiated for that leg's place-archetype** (value-tagged), never a
+prior leg's shape copied over. This is the user's "environment to play in," shown so they **construct
+preferences by reacting** (not a blank questionnaire). Fill every column for each leg:
 
 | Column | What it holds |
 |---|---|
@@ -45,20 +48,29 @@ capture; the conductor is the sole writer).
 ## Beat 3 — LOCK (write the arc, re-render)
 When the arc settles:
 - Write/replace the canonical `## Trip Architecture` section in `trips/<trip-id>.md` (schema below).
+- **Record the lead value (post-convergence)** — which L1 value actually drove the arc, and whether it was
+  stated up front or surfaced latently — plus **per-leg salience** (which values were dialed up per leg).
+  (`references/preference-model.md`.)
+- **Write back the L2 row(s)** — append each leg's `(value × archetype → concrete criteria)` to the
+  profile's L2 table so the mapping compounds across trips (append-only; never overwrite a variant).
 - Re-render the visual arc-board deliverable.
 - From here on, **every per-leg query re-anchors to this section** (read at STEP 0): open each per-leg
-  answer with "this leg's job is X — here's how this pick leverages (or fights) it," and apply any
-  guard-resolved criteria as standing filters for that leg.
+  answer with "this leg's job is X — here's how this pick leverages (or fights) it," apply any
+  guard-resolved criteria as standing filters, and re-anchor to the leg's **values/monopoly, never a prior
+  leg's shape** (the don't-transplant rule).
 
 ---
 
 ## The inference guard (means→end; LOAD-BEARING ONLY)
-The recurring failure this prevents: the skill infers a constraint the user never stated (often
-generalized from ONE loved example), then silently benches strong options on it — forcing the user to
-discover and correct it a round later. Instead: when about to filter on an *unstated* attribute,
-**climb from the means (the proxy) to the end (the real value)** and surface it as a reactable menu
-BEFORE filtering. (This operationalizes Value-Focused Thinking — means-objectives vs fundamental-
-objectives — already in `strategy.md` function D.)
+The inference guard is **ladder-up-on-capture fired at a decision point** — the load-bearing case of the
+general laddering rule in `references/preference-model.md`. The recurring failure it prevents: the skill
+infers a constraint the user never stated (often generalized from ONE loved example), then silently
+benches strong options on it — forcing the user to discover and correct it a round later. Instead: when
+about to filter on an *unstated* attribute, **climb from the means (the proxy) to the end (the real value
+/ L1)** and surface it as a reactable menu BEFORE filtering. (This operationalizes Value-Focused Thinking
+— means-objectives vs fundamental-objectives — already in `strategy.md` function D.) Distinct from the
+**don't-transplant guard** (`references/preference-model.md`), which prevents copying a prior leg's shape
+onto a new archetype.
 
 **Fires only when BOTH hold (load-bearing only — do NOT over-probe):**
 1. the attribute is the conductor's *inference*, not user-stated and not already in `USER-PROFILE.md` /
@@ -98,6 +110,9 @@ _Locked <date> · total <N> days_
 | … | … | … | … | … | … | … | … |
 
 **Day-split:** <leg A N nights · leg B N nights · …>  (arrival/transit days noted)
+
+**Lead value (post-convergence):** <which L1 value drove the arc · stated up front? yes/no>
+**Per-leg salience:** <leg → which L1 values were dialed up for it>
 
 **Drawn-out criteria (means→end resolutions):**
 - <e.g. "rural-leg archetype = community-that-runs-activities + a view — NOT smallness" (guard, <date>)>
