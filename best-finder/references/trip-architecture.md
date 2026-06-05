@@ -5,7 +5,7 @@ A multi-leg trip's venue choices are downstream of a question the user usually c
 on **multi-leg AND MEDIUM/HIGH-stakes** trips (the same gate that dispatches
 `agents/strategy-researcher.md`), and **scales down to nothing** on single-leg / low-stakes lookups —
 do function A inline, skip the board and the beats. It orchestrates the existing strategy functions
-(A/B/C/D in `strategy.md`) into three beats and adds the day-budget (function E) and a persistent arc.
+(A–D in `strategy.md`) plus the new day-budget (function E) into three beats, with a persistent arc.
 
 The **inference guard** (below) is the one part that is always live, because it costs nothing until it
 fires.
@@ -44,7 +44,7 @@ capture; the conductor is the sole writer).
 
 ## Beat 3 — LOCK (write the arc, re-render)
 When the arc settles:
-- Write/replace the canonical `## Trip Architecture` section in `trips/<id>.md` (schema below).
+- Write/replace the canonical `## Trip Architecture` section in `trips/<trip-id>.md` (schema below).
 - Re-render the visual arc-board deliverable.
 - From here on, **every per-leg query re-anchors to this section** (read at STEP 0): open each per-leg
   answer with "this leg's job is X — here's how this pick leverages (or fights) it," and apply any
@@ -87,7 +87,7 @@ It runs in Phase 2 AND later discovery (Phase 3/5) — a filter discipline, not 
 ---
 
 ## Canonical `## Trip Architecture` state schema
-Written by the conductor into `trips/<id>.md` at LOCK (single-writer; dated, alongside the Change Log):
+Written by the conductor into `trips/<trip-id>.md` at LOCK (single-writer; dated, alongside the Change Log):
 
 ```markdown
 ## Trip Architecture
