@@ -17,3 +17,5 @@ best-finder/dist/
 !ei-recursive-goal/**
 !ei-research/
 !ei-research/**
+!ei-audit-project/
+!ei-audit-project/**
