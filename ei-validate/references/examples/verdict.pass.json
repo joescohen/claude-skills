@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "run_id": "demo-pass-001",
+  "target": "subtask:add-foo",
+  "timestamp": "2026-06-16T12:00:00Z",
+  "overall": "PASS",
+  "stop_recommendation": "DONE",
+  "criteria": [
+    { "id": "REQ-1", "title": "foo returns 42", "status": "PASS", "verification_method": "unit test", "evidence": "node test exit 0" }
+  ],
+  "adversarial": { "applied": true, "overturned": [], "unproven": [], "canary_calibration": "ok" },
+  "blocking_findings": []
+}

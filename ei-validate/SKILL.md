@@ -39,8 +39,8 @@ User → Conductor (you) → [Gate -1: Runtime Precondition Probe] → Spec Agen
      → Reporter Agent → [Gate 4] → Adversarial Reviewer → [Gate 5] → User
 ```
 
-Full protocol defined in: `~/.claude/skills/system-validation/checkpoint-contract.md`
-Agent instructions in: `~/.claude/skills/system-validation/agents/`
+Full protocol defined in: `~/.claude/skills/ei-validate/checkpoint-contract.md`
+Agent instructions in: `~/.claude/skills/ei-validate/agents/`
 
 ---
 
@@ -229,7 +229,7 @@ If **all checks pass**: proceed to Pre-Dispatch Acknowledgment → Spec Agent.
 Dispatch the Spec Agent with your pre-flight context:
 
 ```
-Agent file: ~/.claude/skills/system-validation/agents/spec-agent.md
+Agent file: ~/.claude/skills/ei-validate/agents/spec-agent.md
 Model: haiku
 Prompt must include:
   - system_description
@@ -303,7 +303,7 @@ Wait for the user's response (unless skipped). Collect:
 Dispatch the Matrix Agent with calibration input:
 
 ```
-Agent file: ~/.claude/skills/system-validation/agents/matrix-agent.md
+Agent file: ~/.claude/skills/ei-validate/agents/matrix-agent.md
 Model: haiku
 Prompt must include:
   - specification_path (from SPEC_COMPLETE)
@@ -351,7 +351,7 @@ Tell the user concisely:
 Dispatch all clusters simultaneously. One executor agent per cluster:
 
 ```
-Agent file: ~/.claude/skills/system-validation/agents/executor-agent.md
+Agent file: ~/.claude/skills/ei-validate/agents/executor-agent.md
 Model: haiku
 Run ALL clusters in parallel (one Agent dispatch per cluster)
 Each prompt must include:
@@ -455,7 +455,7 @@ is `UNVERIFIED`.
 Collect all CLUSTER_COMPLETE outputs. Dispatch the Reporter:
 
 ```
-Agent file: ~/.claude/skills/system-validation/agents/reporter-agent.md
+Agent file: ~/.claude/skills/ei-validate/agents/reporter-agent.md
 Model: haiku
 Prompt must include:
   - cluster_outputs: full text of ALL CLUSTER_COMPLETE checkpoints, concatenated
@@ -490,7 +490,7 @@ reporter's narrative or `audit-report.md`:
 
 **Step 2 — Dispatch.**
 ```
-Agent file: ~/.claude/skills/system-validation/agents/adversarial-reviewer-agent.md
+Agent file: ~/.claude/skills/ei-validate/agents/adversarial-reviewer-agent.md
 Model: a strong model (NOT the cheapest tier — this is the falsification gate)
 Prompt must include the blinded packet above, and MUST NOT include the reporter narrative.
 ```
@@ -524,6 +524,22 @@ nor is affected by its absence.
 applied — drop/correct OVERTURNED claims, relabel UNPROVEN as unconfirmed (never PASS), lead with any
 blocking Tier-1 correction, and surface unresolved HIGH/CRITICAL disputes for a human. Synthesize only
 over claims that SURVIVED the adversarial pass.
+
+**Gate 5 Step 0 — Emit the machine-readable verdict (REQUIRED).** After applying the adversarial
+results, write `<output_path>/verdict.json` conforming to
+`~/.claude/skills/ei-validate/references/verdict-schema.md`, reflecting the POST-adversarial
+truth: each Tier-1 requirement / user directive becomes a `criteria[]` entry whose `status` is its
+surviving verdict (OVERTURNED Tier-1 → `FAIL` plus a `blocking_findings` line; HIGH/CRITICAL still
+UNPROVEN after the rebuttal → `UNPROVEN`; a run where `capture_mechanism_proven` was false →
+`overall: INCONCLUSIVE`). Set `overall` and `stop_recommendation` per the derivation rules in the
+schema doc. Then self-validate:
+
+    node ~/.claude/skills/ei-validate/scripts/validate-verdict.mjs <output_path>/verdict.json
+
+It MUST exit 0 before you present to the user; if it exits 1, fix the verdict so it is internally
+consistent (a non-zero exit means your stated `overall`/`stop_recommendation` contradict the
+criteria — usually an over-optimistic PASS). This file is the convergence signal consumed by
+orchestrators such as `ei-loop`; the prose synthesis below is for the human and must agree with it.
 
 Do not relay the report summary verbatim. Synthesize in terms of what matters to the user:
 
@@ -618,7 +634,7 @@ The `provenance` block uses CEI's canonical `REQUIRED_PROVENANCE_FIELDS` (from `
 
 3. The candidate enters CEI's standard promotion ladder. Do NOT promote it locally. The user reviews via `cei review list` and `cei review accept <id>`.
 
-4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json`. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable. Surface the fallback path in the final report's "Skill Health" or equivalent section so the user sees it after the run: `[Gate 4.5 fallback fired: novel-finding stub written to ~/.claude/skills/system-validation/.pending-cei-candidates/<filename>.json instead of CEI candidates dir. Reason: <env-unset | cei-root-failed>. Manually move to CEI candidates/ when CEI becomes reachable.]`
+4. If CEI is unreachable, write to a local fallback path `~/.claude/skills/ei-validate/.pending-cei-candidates/<filename>.json`. The skill MUST NOT silently drop the finding. The user manually moves these to CEI's candidates dir when CEI becomes reachable. Surface the fallback path in the final report's "Skill Health" or equivalent section so the user sees it after the run: `[Gate 4.5 fallback fired: novel-finding stub written to ~/.claude/skills/ei-validate/.pending-cei-candidates/<filename>.json instead of CEI candidates dir. Reason: <env-unset | cei-root-failed>. Manually move to CEI candidates/ when CEI becomes reachable.]`
 
 **Step 4 — Archive stale lessons (opportunistic):**
 

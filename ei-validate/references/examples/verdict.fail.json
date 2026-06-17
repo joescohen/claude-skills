@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "run_id": "demo-fail-001",
+  "target": "subtask:add-foo",
+  "timestamp": "2026-06-16T12:05:00Z",
+  "overall": "FAIL",
+  "stop_recommendation": "NOT_YET",
+  "criteria": [
+    { "id": "REQ-1", "title": "foo returns 42", "status": "FAIL", "verification_method": "unit test", "evidence": "assert 0 === 42" }
+  ],
+  "adversarial": { "applied": true, "overturned": [], "unproven": [], "canary_calibration": "ok" },
+  "blocking_findings": ["REQ-1 unmet: foo returns 0"]
+}
