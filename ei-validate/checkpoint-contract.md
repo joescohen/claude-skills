@@ -182,3 +182,18 @@ Emit this IN ADDITION to the normal cluster execution — do not skip CLUSTER_CO
 
 The conductor (not the executor) makes the final halt/continue decision. Default: continue unless
 the finding indicates data corruption, auth failure, or a state that makes all subsequent rows meaningless.
+
+---
+
+## Final Artifact: verdict.json (Gate 5)
+
+**Written by:** the Conductor at Gate 5 Step 0, after ADVERSARIAL_COMPLETE is parsed and applied.
+**Consumed by:** the user (as the human synthesis) and any orchestrator (e.g. `ei-loop`) as the
+machine-readable convergence signal.
+
+Schema, field semantics, and the `overall`/`stop_recommendation` derivation rules:
+`references/verdict-schema.md`. The file MUST pass
+`scripts/validate-verdict.mjs <output_path>/verdict.json` (exit 0) before the Gate-5 user synthesis —
+the validator re-derives `overall` from the criteria, so a verdict that claims PASS while a criterion
+FAILed is rejected. This is the deterministic guard that keeps the prose synthesis and the
+machine-readable signal in agreement.
