@@ -173,16 +173,29 @@ Named explicitly in the final report (à la `ei-audit-project`):
 - **New:** the `ei-loop` conductor itself; per-stage interface contracts; the Build adapter
   interface; the worklist/state schema; the oracle-boundary guard.
 
-## 13. Testing strategy
+## 13. Verification strategy
 
-- **State-machine unit tests** — given a `STATE.md`, assert the next action; verdict parsing;
-  worklist decomposition.
-- **Re-entrancy test** — kill mid-iteration, re-invoke, assert resume from last commit.
-- **Canary / anti-gaming test** — plant a sub-task whose easy path is deleting the failing test;
-  assert diff-guard + blind auditor catch it.
-- **Dual-mode equivalence** — same objective supervised vs. unattended → same terminal state.
-- **End-to-end** — a tiny real objective ("add function `foo` with passing tests") driven to
-  `DONE` with chain-of-custody on a throwaway repo.
+This repo has **no test framework** (no `package.json`, no pytest/vitest) — skills are markdown,
+and the only executable precedent is best-finder's standalone Node hooks. So `ei-loop` is verified
+two ways, matching the repo's reality:
+
+**Deterministic helpers → standalone Node checks** (no deps, run via `node`, à la
+`best-finder/hooks`). The load-bearing deterministic pieces are small Node scripts with runnable
+check cycles: the verdict-schema validator, the diff-guard (no test-file modifications), and the
+caps/stop-condition evaluator. Each ships with example fixtures and is "tested" by running it
+against valid/invalid fixtures and asserting exit code — no test runner required.
+
+**Conductor behavior → scenario/fixture runs.** The conductor (re-entrancy, dual-mode equivalence,
+anti-gaming canary, end-to-end convergence) is verified by running it against a throwaway target
+repo with a tiny objective and asserting on the resulting `.ei-loop/` state files and terminal stop
+condition. The build oracle in these scenarios is the **target repo's own** test/lint/typecheck
+commands (captured at Gate 0), never `ei-loop`'s own judgment.
+
+Scenarios: (a) **re-entrancy** — interrupt mid-iteration, re-invoke, assert resume from last commit;
+(b) **dual-mode equivalence** — same objective supervised vs. unattended → same terminal state;
+(c) **canary** — plant a sub-task whose easy path is deleting the failing test, assert diff-guard +
+blind auditor catch it; (d) **end-to-end** — "add function `foo` with passing tests" driven to
+`DONE` with chain-of-custody.
 
 ## 14. Out of scope (YAGNI for v1)
 
