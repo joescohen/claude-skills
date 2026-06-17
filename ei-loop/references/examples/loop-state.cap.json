@@ -1,0 +1,15 @@
+{
+  "iteration": 10,
+  "iteration_cap": 10,
+  "cost": 2.10,
+  "cost_cap": 5.00,
+  "stall_counter": 1,
+  "stall_window": 3,
+  "worklist": [
+    { "id": "task-1", "status": "PASS" },
+    { "id": "task-2", "status": "BUILDING" }
+  ],
+  "global_verdict": "NOT_YET",
+  "has_blocked": false,
+  "has_pending": true
+}

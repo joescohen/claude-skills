@@ -19,3 +19,5 @@ best-finder/dist/
 !ei-research/**
 !ei-audit-project/
 !ei-audit-project/**
+!ei-loop/
+!ei-loop/**

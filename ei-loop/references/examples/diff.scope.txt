@@ -1,0 +1,3 @@
+M	src/allowed/feature.js
+A	src/allowed/helper.js
+M	src/other/sneaky.js
