@@ -28,9 +28,11 @@ wt="$WT_BASE/$(basename "$(pwd)")-$slug"
 branch="ei-loop/$slug"
 
 heartbeat_age() {                          # seconds since the lock's heartbeat (or huge if none)
-  local hb="$lockdir/heartbeat"
+  local hb="$lockdir/heartbeat" m
   [ -f "$hb" ] || { echo 999999; return; }
-  echo $(( $(date +%s) - $(stat -c %Y "$hb" 2>/dev/null || echo 0) ))
+  # Portable mtime: GNU `stat -c %Y`, then BSD/macOS `stat -f %m`, else treat as stale.
+  m="$(stat -c %Y "$hb" 2>/dev/null || stat -f %m "$hb" 2>/dev/null || echo 0)"
+  echo $(( $(date +%s) - m ))
 }
 
 case "$cmd" in
