@@ -115,7 +115,8 @@ cleanly from the last commit — the cursor in `STATE.md` points at the next act
 - Research lineage (CEGIS / PDCA / spec-driven): `references/research-lineage.md`
 - Agent prompts: `agents/worklist-decomposer.md`, `agents/global-verdict-auditor.md`,
   `agents/builder-adapter.md`
-- Deterministic helpers: `scripts/stop-condition.mjs`, `scripts/diff-guard.mjs`
+- Deterministic helpers: `scripts/ei-loop-preflight.sh` (G0 run-lock + dedicated worktree),
+  `scripts/stop-condition.mjs`, `scripts/diff-guard.mjs`
 
 ---
 
@@ -126,7 +127,8 @@ Every invocation follows the same loop body — **no exceptions, no batching of 
 1. **Read `.ei-loop/STATE.md`.** If `.ei-loop/` is absent, this is a fresh run → start at Stage 0.
    Otherwise read `mode`, `current_stage`, `iteration`, the cost/token ledger, `stall_counter`, the
    `cursor` (the next action), `last_gate`, and `parked[]`. Never reconstruct state from conversation
-   memory — the disk is the source of truth.
+   memory — the disk is the source of truth. On a continuing run, refresh the run-lock heartbeat
+   (`scripts/ei-loop-preflight.sh heartbeat <repo> <slug>`) so a second session can't steal the lock.
 2. **Determine the next action** from the cursor: which stage to run, and for per-item stages (Build,
    Validate) which `WORKLIST.md` sub-task.
 3. **Execute ONE stage** per its interface contract in `references/stage-contracts.md`. Capture fresh
@@ -138,7 +140,12 @@ Every invocation follows the same loop body — **no exceptions, no batching of 
 6. **Emit the gate summary and EXIT.** Supervised → surface it and (at human gates) pause.
    Unattended → write it to `STATE.md` and exit so `/loop` re-invokes.
 
-**Never start dirty.** Stage 0 refuses a dirty repo; all work happens on a dedicated branch/worktree.
+**Never start dirty, never collide.** Stage 0 refuses a dirty repo, and the G0 preflight
+(`scripts/ei-loop-preflight.sh acquire`) acquires an atomic **repo-scoped run-lock** and creates a
+**dedicated git worktree** — all work happens inside that worktree, never the main checkout or a
+hand-picked shared path. A second concurrent run on the same target is refused at G0, so two sessions
+can never edit one worktree/`STATE.md` at once. Refresh the lock heartbeat at the start of every
+invocation and release it at the terminal stop (see `checkpoint-contract.md` G0).
 
 ---
 
@@ -157,6 +164,29 @@ gate summaries are surfaced and whether human gates pause.
 
 Dual-mode equivalence is a design invariant: the same objective run supervised vs. unattended must
 reach the **same terminal stop condition**.
+
+### Unattended autonomy guardrails
+
+In `unattended` mode the run is driven by `/loop` with no human watching — **stopping to ask is a
+failure, not a safety measure.** (Motivating failure: a run wedged its chosen tool, asked the user
+"where should I go from here?", and froze for hours.)
+
+- **Never call `AskUserQuestion`; never pause for a preference.** Face a choice → pick the reasonable
+  default, record it in `STATE.md`, proceed. The only things that halt are genuinely
+  irreversible/architectural actions, and those `park BLOCKED` and **auto-proceed to the next item** —
+  they never freeze the run waiting for a human.
+- **Never use the `Workflow` tool to run stages.** Stage fan-out is direct subagent dispatch
+  (`agents/*.md`). The Workflow validator has wedged runs by rejecting long embedded scripts; if any
+  tool errors repeatedly, fall back to the simpler path — do not escalate it into a question.
+- **A failing tool is not a human gate.** Retry once, fall back, or park the single item BLOCKED and
+  move on.
+
+**Red flags — you are about to stall the loop:**
+- "I'll ask which approach the user prefers…" → unattended = decide and record.
+- "The Workflow keeps failing, let me check with the user." → fall back to direct dispatch.
+- "Let me pause here so they can review." → write the summary to `STATE.md` and continue.
+
+All of these mean: make the call, log it, proceed.
 
 ---
 
