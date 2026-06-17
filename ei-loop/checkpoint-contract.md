@@ -14,7 +14,16 @@ State lives on disk, not in context. Every gate update is committed before the s
 **What must be true to pass:**
 - Working tree is clean: `git status --porcelain` returns empty output. Never start on top of
   un-snapshotted human work.
-- A dedicated branch or worktree for this run exists (or is created now).
+- **Isolation + single-run lock — run the preflight helper, do not improvise a path.** From the
+  target repo run `bash <ei-loop-skill-dir>/scripts/ei-loop-preflight.sh acquire <repo> <slug>`
+  (`<slug>` = a short kebab of the objective, e.g. `extensive-smoke-test`). It atomically:
+  (a) **refuses with exit 3** if another live ei-loop run holds the repo-scoped lock — this is what
+  stops two sessions from editing one worktree/branch/`STATE.md` and corrupting each other; and
+  (b) creates a **dedicated git worktree** (`/tmp/ei-loop/<repo>-<slug>` on branch `ei-loop/<slug>`)
+  that ALL subsequent work happens in. Record the printed `WORKTREE=` path in `STATE.md` and operate
+  only inside it — never run the loop in the main checkout or a hand-picked shared path like
+  `/tmp/<project>`. The lock self-heals: a holder whose heartbeat is older than
+  `EI_LOOP_LOCK_TTL` (default 30 min) is treated as crashed and stolen.
 - The oracle commands (test / lint / typecheck) are identified from real project config — not
   assumed — and execute successfully. Baseline green output is written to
   `.ei-loop/evidence/baseline/oracle-green.txt` (a file the BLIND global auditor MAY read), and
@@ -46,6 +55,15 @@ seeing STATE.md.
 - Oracle commands not found or fail at baseline → STOP; surface the failure verbatim. A red
   baseline means the target is already broken — fix it first or the loop has no valid verifier.
 - Any LLM-judgment-only criterion without a human owner in unattended mode → STOP.
+- Preflight `acquire` returns exit 3 (another live ei-loop run holds the lock for this target) →
+  STOP immediately. Do **not** start a second concurrent run or pick a different worktree path to
+  sidestep it — that recreates the collision. Wait for the active run, or release a confirmed-dead
+  lock with `ei-loop-preflight.sh release <repo> <slug>` and re-invoke.
+
+**Lock lifecycle (every invocation):** at the start of each re-invocation, refresh liveness with
+`ei-loop-preflight.sh heartbeat <repo> <slug>`. At any terminal stop (`RUN_CLOSED`, or an abort/STOP
+that ends the run) release it with `ei-loop-preflight.sh release <repo> <slug>` so the next run isn't
+blocked for the full TTL.
 
 ---
 
