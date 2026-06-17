@@ -525,6 +525,22 @@ applied — drop/correct OVERTURNED claims, relabel UNPROVEN as unconfirmed (nev
 blocking Tier-1 correction, and surface unresolved HIGH/CRITICAL disputes for a human. Synthesize only
 over claims that SURVIVED the adversarial pass.
 
+**Gate 5 Step 0 — Emit the machine-readable verdict (REQUIRED).** After applying the adversarial
+results, write `<output_path>/verdict.json` conforming to
+`~/.claude/skills/system-validation/references/verdict-schema.md`, reflecting the POST-adversarial
+truth: each Tier-1 requirement / user directive becomes a `criteria[]` entry whose `status` is its
+surviving verdict (OVERTURNED Tier-1 → `FAIL` plus a `blocking_findings` line; HIGH/CRITICAL still
+UNPROVEN after the rebuttal → `UNPROVEN`; a run where `capture_mechanism_proven` was false →
+`overall: INCONCLUSIVE`). Set `overall` and `stop_recommendation` per the derivation rules in the
+schema doc. Then self-validate:
+
+    node ~/.claude/skills/system-validation/scripts/validate-verdict.mjs <output_path>/verdict.json
+
+It MUST exit 0 before you present to the user; if it exits 1, fix the verdict so it is internally
+consistent (a non-zero exit means your stated `overall`/`stop_recommendation` contradict the
+criteria — usually an over-optimistic PASS). This file is the convergence signal consumed by
+orchestrators such as `ei-loop`; the prose synthesis below is for the human and must agree with it.
+
 Do not relay the report summary verbatim. Synthesize in terms of what matters to the user:
 
 > "**Validation complete.** [N] issues found across [N] tests.
