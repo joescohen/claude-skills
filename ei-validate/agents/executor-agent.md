@@ -249,10 +249,10 @@ Rules:
 - **low**: cosmetic, minor visual nit
 
 For deeper guidance on verification techniques, read:
-`~/.claude/skills/system-validation/references/multi-modal-verification.md`
+`~/.claude/skills/ei-validate/references/multi-modal-verification.md`
 
 For deeper guidance on issue reporting, read:
-`~/.claude/skills/system-validation/references/reporting-templates.md`
+`~/.claude/skills/ei-validate/references/reporting-templates.md`
 
 ---
 

@@ -32,7 +32,7 @@ Assign final finding IDs sequentially: FIND-001, FIND-002, ... (replacing cluste
 ## Step 2: Write audit-report.md
 
 For the full report template and severity guide, read:
-`~/.claude/skills/system-validation/references/reporting-templates.md`
+`~/.claude/skills/ei-validate/references/reporting-templates.md`
 
 The report must include these sections:
 
