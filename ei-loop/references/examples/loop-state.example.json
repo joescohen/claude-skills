@@ -1,0 +1,17 @@
+{
+  "iteration": 3,
+  "iteration_cap": 10,
+  "cost": 1.47,
+  "cost_cap": 10.00,
+  "stall_counter": 1,
+  "stall_window": 3,
+  "worklist": [
+    { "status": "PASS" },
+    { "status": "VALIDATING" },
+    { "status": "PENDING" },
+    { "status": "BLOCKED" }
+  ],
+  "global_verdict": "NOT_YET",
+  "has_blocked": true,
+  "has_pending": true
+}
