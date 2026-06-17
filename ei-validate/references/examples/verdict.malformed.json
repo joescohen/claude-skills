@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "run_id": "demo-malformed-001",
+  "target": "subtask:add-foo",
+  "timestamp": "2026-06-16T12:10:00Z",
+  "criteria": [],
+  "adversarial": { "applied": true, "canary_calibration": "ok" }
+}
