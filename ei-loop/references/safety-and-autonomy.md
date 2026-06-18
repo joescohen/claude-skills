@@ -138,6 +138,39 @@ If any oracle fails at baseline, the run stops at Gate 0 with `BLOCKED` — the
 repo is in a broken state that the user must resolve before autonomous work can
 begin.
 
+### 2.4 Judgement-priors firewall (oracle-boundary corollary)
+
+**Judgement Priors** are accumulated human judgement (the most relevant `accepted`
+lessons from the session-learnings KB, auto-surfaced via
+`python3 src/kb.py relevant --project <p> --stage <gate0|research|decompose|build> [--query <task>]`).
+They are advisory **generation-side** input only — consulted at Gate 0 (advisory
+to the human locking the rubric), Research, Decompose, and Build (see
+`SKILL.md` → "Judgement Priors"). They make the loop generate better the first
+time; they are single-user, possibly-stale, subjective signal.
+
+Because they are subjective, a **hard firewall** keeps judgement priors out of
+the verifier. A judgement prior **MUST NOT**:
+
+1. **MUST NOT** enter, be passed to, or be seen by the **Stage-5 blind global
+   auditor** — which by contract (§3.2) sees ONLY `OBJECTIVE.md` + `evidence/`.
+   The firewall preserves that blindness; the Stage-5 input contract is never
+   relaxed to admit a prior, a build narrative, or any KB lesson.
+2. **MUST NOT** become a criterion in the locked global rubric (`OBJECTIVE.md`)
+   or a `verification_method` for any sub-claim / worklist item.
+3. **MUST NOT** pass the oracle-boundary check of §2.1 as a verifier — a
+   judgement prior is not one of the objective verifier types in that table; it
+   is advisory generation context, full stop.
+
+**Why this is the whole ballgame:** if a judgement prior crossed this firewall it
+would re-import LLM/subjective opinion through the exact back door the
+oracle-boundary guard exists to block — the loop would then **confirm its own
+past mistakes as ground truth.** The resolution that keeps priors useful *and*
+safe: a C7 "verification-failure" judgement is injected at **Decompose / Gate 0**
+so it becomes a *better objective acceptance check* (e.g. "capture a screenshot
+of the click-through"). Judgement decides **what** to verify; the verifier itself
+stays objective. Grounding:
+`/home/joescohen/Engineering/projects/.ei-research/judgement-injection/RESEARCH.md`.
+
 ---
 
 ## 3. Anti-Gaming
