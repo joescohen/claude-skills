@@ -76,6 +76,9 @@ blocked for the full TTL.
     one per major acceptance dimension), and a named objective verification method per sub-claim.
     Format reuses `ei-recursive-goal` Phase-1 rubric: definitive question → falsifiable sub-claims
     → three-layer decomposition (interface / intermediate-representation / output).
+  - The **thoroughness tier** (`smoke | exhaustive (default) | deep`) — the coverage policy (see
+    SKILL.md → Coverage & thoroughness). Supervised: the default is surfaced and human-confirmed or
+    overridden before lock. Unattended: it must already be present in the human-locked rubric.
   - Design-rationale sources cited (which parts of research or existing spec informed the rubric).
 - Supervised mode: present `OBJECTIVE.md` in full and obtain explicit acknowledgment before
   continuing. Unattended mode: write the summary to `STATE.md` and proceed — the rubric was
@@ -123,9 +126,15 @@ research_committed_at: <git commit SHA>
 **What must be true to pass:**
 - `.ei-loop/WORKLIST.md` exists. Every sub-task entry has:
   - `id` (stable identifier, lowercase `item-` prefix, zero-padded — e.g. `item-01`).
-  - `acceptance_criteria` (falsifiable, not vague).
+  - `acceptance_criteria` (falsifiable, not vague) that declare, for any statement ranging over an
+    enumerable input population, the **domain**, a **coverage denominator** over it, and at least one
+    **falsification input**. A criterion that quantifies over a population (e.g. "every X", "any X")
+    but is satisfiable by a single nominal input — a floor like "≥ N" with no denominator, or a
+    confirm-only assertion with no adversarial/negative/boundary case — FAILS this gate.
   - `verification_method` (named and objective — a concrete command or file-diff check, never
-    "LLM judges").
+    "LLM judges") that iterates the declared domain to the declared coverage, exercises the
+    falsification input, and emits a machine-readable `failures/total` (coverage denominator) rather
+    than a bare boolean PASS.
   - `acceptance_test` (the path/substring of the test of record — diff-guard arg2).
   - `scope_paths` (the allowed edit path prefixes — diff-guard arg3).
   - `status: PENDING` (full enum `{PENDING, BUILDING, VALIDATING, PASS, BLOCKED}` is defined in
@@ -148,6 +157,10 @@ worklist_locked_at: <git commit SHA>
 
 **STOP conditions:**
 - Any sub-task lacks a named objective `verification_method` → STOP; fix the decomposition first.
+- Any criterion whose statement ranges over an enumerable population yet is satisfiable by a single
+  nominal input (no coverage denominator, or no falsification input) → STOP; re-enter Decompose to
+  give it a domain, a coverage denominator, and a falsification case. A floor ("≥ N inputs") is not
+  a coverage denominator.
 - Worklist is empty → STOP; the objective could not be decomposed — surface to user.
 
 ---

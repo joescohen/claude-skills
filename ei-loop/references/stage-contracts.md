@@ -48,6 +48,11 @@ The conductor (no subagent dispatch) performs four steps in order:
    - Numbered falsifiable sub-claims (each: a binary question answerable by the oracle)
    - Named verification method per sub-claim (exact shell command or named check)
    - Three-layer interface/IR/output decomposition for the objective as a whole (see Stage 2)
+   - **Thoroughness tier** (`smoke | exhaustive (default) | deep`) recorded in `OBJECTIVE.md` — the
+     coverage policy the decomposer turns into per-criterion `coverage` denominators (see SKILL.md →
+     Coverage & thoroughness). The input population is auto-derived from the codebase; the tier is the
+     human's cost/risk dial. Supervised: surface the default for the human to confirm/raise/lower.
+     Unattended: it must already be set in the human-locked rubric.
 4. **Initialize state.** Write `OBJECTIVE.md` (immutable hereafter), initialize `STATE.md`
    with `mode`, `current_stage=RESEARCH` (Stage 0 is complete once it passes G0+G1),
    `iteration=1`, cost/token ledger at zero, `stall_counter=0`, `parked=[]`, `last_gate=G1`.
@@ -152,8 +157,25 @@ Each worklist item must be specified at three layers, not just the output:
    item must exhibit. This is the `verification_method` field in `WORKLIST.md` — an exact shell
    command or named check, never "looks right."
 
-Output-only decomposition (specifying only layer 3) is an explicit failure mode that the
-three-layer structure prevents.
+The three layers fix WHERE a property is checked (entry point / internal artifact / final output).
+They do NOT fix HOW BROADLY or HOW ADVERSARIALLY it is checked — an item can be three-layer-complete
+and still exercise each layer on a single nominal input. So each item carries a second, orthogonal
+dimension at every layer it specifies:
+
+- **Domain & coverage:** the input population the property ranges over, and the denominator the
+  verifier must cover (the full set when enumerable; an explicit, justified sample otherwise — never
+  a bare floor like "≥ N"). Where the codebase exposes the population as a list/count/route-set, the
+  contract names the enumeration source.
+- **Falsification:** at least one adversarial / negative / boundary / ordering / timing input chosen
+  to MAKE THE PROPERTY BREAK. The property holds only if every covered sample passes AND the
+  falsification input does not break it.
+
+Output-only decomposition (specifying only layer 3) AND single-input decomposition (any layer
+exercised on one nominal input when the property ranges over an enumerable population) are BOTH
+explicit failure modes. The three-layer structure prevents the first; the domain/coverage +
+falsification dimension prevents the second. A verifier that confirms a property on a handful of
+nominal inputs without a coverage denominator and without a falsification attempt has NOT verified
+a property that quantifies over a population.
 
 **`WORKLIST.md` per-item fields** (see `references/state-schema.md` for full schema):
 - `id` (canonical `item-NN`, e.g. `item-01`)

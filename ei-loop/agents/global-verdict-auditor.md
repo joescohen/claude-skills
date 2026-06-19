@@ -109,8 +109,28 @@ This is the diff-guard failure mode. If you detect it, mark the sub-claim ❌ AN
 SUSPECTED and note it prominently in the verdict. The conductor will re-run `diff-guard.mjs`
 on the Build diff.
 
-**f. Render binary state:** ✅ PASS if fresh evidence definitively shows the claim holds AND
-fresh run agrees; ❌ FAIL otherwise. There is no partial credit.
+**f. Coverage & falsification check.** If the sub-claim's statement quantifies over an enumerable
+input population ("every X", "any X", "all X"), it is NOT enough that a fresh run agrees on the
+inputs that happen to be in the evidence. Require:
+- A **coverage denominator** in the evidence — a machine-readable `failures/total` (or equivalent
+  count) showing the verifier was exercised across the population, not on a fixed handful. Evidence
+  that reports only a bare boolean `PASS` for a population-quantified claim is insufficient → FAIL,
+  naming "no coverage denominator for a population claim". If `OBJECTIVE.md` declares a
+  `thoroughness_tier`, confirm the denominator MEETS it — e.g. an `exhaustive` tier requires
+  `total` == the full enumerable population size (read the population from the evidence or
+  `codebase_root`); a partial denominator under an `exhaustive`/`deep` tier → FAIL, naming "coverage
+  below declared thoroughness tier".
+- A **falsification attempt** in the evidence — at least one adversarial / negative / boundary /
+  ordering / timing input that tried to break the claim and did not. Evidence that only confirms the
+  claim on nominal inputs, with no break-attempt, is insufficient → FAIL, naming "no falsification
+  attempt for a population claim".
+Where the population is enumerable from the codebase (a list/count/route-set you can read from
+`codebase_root` or the captured evidence), independently confirm the denominator covers it. This is
+a verification-rigor mandate, not a build-narrative read: you still see ONLY OBJECTIVE.md + evidence/.
+
+**g. Render binary state:** ✅ PASS if fresh evidence definitively shows the claim holds, fresh run
+agrees, AND (for population-quantified claims) the coverage & falsification check passes; ❌ FAIL
+otherwise. There is no partial credit.
 
 ### Step 3: Fabrication check
 

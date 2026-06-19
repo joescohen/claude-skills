@@ -106,8 +106,35 @@ scalar comparison.
 
 Format each criterion as:
 ```
-- <statement> [oracle: <command or check type>]
+- <statement> [oracle: <command or check type>] [domain: <input population the statement ranges over>] [coverage: <how much of that domain the oracle must be exercised over, with a denominator>] [falsification: <at least one adversarial/negative/boundary input the oracle must FAIL to break>]
 ```
+
+A criterion's `statement` quantifies over a **domain** — the set of inputs it claims to hold for
+(e.g. "every connector", "any activity card", "all responsive widths"). You MUST:
+- Name that domain explicitly and, where the codebase makes it enumerable (a list, a table, a
+  count from the API/DB, a set of routes/breakpoints), state the enumeration source so the oracle
+  can iterate it.
+- State `coverage` as a denominator the oracle reports, not a floor, sized by the OBJECTIVE.md
+  **thoroughness tier** (see SKILL.md → Coverage & thoroughness):
+  - **Enumerable + cheap → exhaustive** (the default tier): cover ALL N (every connector, every card,
+    every breakpoint). Do NOT sample a small cheap population.
+  - **Too large/expensive to exhaust →** a principled method, never a uniform guess: equivalence
+    partitioning + boundary values (one per class + every edge), pairwise across dimensions, a
+    statistical denominator via the rule of three (0 failures in N ⇒ 95% confident failure-rate < 3/N;
+    < 1% ≈ 300 cases), or fuzz-to-budget reporting cases-run + failures.
+  "all N connectors" / "each input class + boundaries" / "300 random inputs (rule of three, <1%@95%)"
+  are coverage; "≥ 3 clicks" or "a uniform sample of sqrt(N)" are NOT — a floor or an ungrounded
+  sample size has no justified denominator and is rejected at Step 7. Cover every boundary case
+  regardless of tier.
+- State at least one `falsification` input: an adversarial, negative, boundary, ordering, or
+  timing input designed to MAKE THE CLAIM BREAK (e.g. the input that previously triggered the bug,
+  the empty/degenerate case, the interleaved/raced action, the reverse direction of a sync). The
+  oracle PASSES only if every domain sample holds AND the falsification input does not break it.
+
+The `verification_method` command MUST iterate the declared domain to the declared coverage and
+exercise the falsification input, and MUST emit a machine-readable `failures/total` (a coverage
+denominator), not a bare boolean. A method that runs a fixed handful of nominal inputs and prints
+`PASS` does not satisfy this — it under-specifies the claim's domain.
 
 Examples of acceptable criteria:
 ```
@@ -184,6 +211,10 @@ Before writing the output, run a self-check:
    "reasonable," "well-formed" without citing a specific schema or command that defines those terms.
 4. The ordered list respects `depends_on` constraints (no task depends on a later task).
 5. Conservative-posture tasks are marked `status: BLOCKED` and have a `park_reason`.
+6. Every criterion whose `statement` quantifies over an enumerable population (e.g. "every X",
+   "any X", "all X") carries a `domain`, a `coverage` denominator (NOT a bare floor like "≥ N"),
+   and at least one `falsification` input, and its `verification_method` emits `failures/total`.
+   A population-claim satisfiable by a single nominal input is rejected here.
 
 If any check fails, fix it before writing. Do not emit an incomplete worklist.
 

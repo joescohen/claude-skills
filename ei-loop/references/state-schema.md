@@ -52,6 +52,8 @@ modify it thereafter.
 
 ## Global rubric (LOCKED)
 
+thoroughness_tier: smoke | exhaustive (default) | deep   <!-- coverage policy; population auto-derived from codebase, tier human-set/confirmed at Gate 0. See SKILL.md → Coverage & thoroughness. -->
+
 **Definitive question:** <Single yes/no question whose answer is "done".>
 
 ### Sub-claims

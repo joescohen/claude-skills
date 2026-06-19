@@ -203,7 +203,11 @@ sub-claims → a named objective verification method per claim → the **three-l
 intermediate-representation / output) decomposition** so the rubric can't pass on easy inputs while
 the architecture degenerates. Capture the **oracle baseline green** (run the target repo's own
 test/lint/typecheck, capture output) and run the **oracle-boundary check** (every rubric criterion
-must resolve to an objective verifier). Lock the mode.
+must resolve to an objective verifier). Set the **thoroughness tier**
+(`smoke | exhaustive (default) | deep` — see [Coverage & thoroughness](#coverage--thoroughness-how-many-cases)):
+the input population is auto-derived from the codebase; the tier is a human cost/risk dial —
+supervised surfaces the default for the human to confirm/raise/lower, unattended requires it pre-set
+in the human-locked rubric. Lock the mode.
 - **Passes gate:** G0 `PRECONDITIONS` → G1 `OBJECTIVE_LOCKED`
 - **Reuses:** `ei-recursive-goal` Phase-1 rubric mechanism + three-layer decomposition
 
@@ -280,6 +284,53 @@ artifacts and criteria for the output of each skill."*
 Both levels resolve to an **EXTERNAL objective oracle** (tests / lint / types / file-diff / scalar),
 never LLM opinion. The L1→L2 decomposition (Stage 2) reuses the three-layer decomposition so a
 multi-phase build gets interface and IR criteria, not just output criteria.
+
+---
+
+## Coverage & thoroughness (how many cases)
+
+`ei-loop` is a **heavy loop**. You invoke it when you want exhaustive failure-mode discovery and
+resolution in one pass — not a happy-path smoke check. So its default posture is **maximal coverage**:
+a verification PASSES only when it has been exercised across its input domain AND survived a
+deliberate attempt to break it. "PASS" means *"N cases, 0 failed, including the adversarial ones,"*
+never *"one nominal case worked."* A criterion whose `statement` quantifies over a population
+("every X", "any X", "all X") is the unit this governs.
+
+**How the case count (coverage denominator) is defined — a decision, not a magic number:**
+
+1. **Enumerable + cheap → exhaustive.** If the population is enumerable (a list / count / route-set /
+   breakpoint-set the codebase exposes) and each case is cheap (a click, a probe, a unit assertion),
+   test **all of it**. Do not sample a small cheap population — that just leaves bugs unfound.
+2. **Infeasible to exhaust → a principled method, never a uniform "pick a number":**
+   - distinct input classes / states / positions → **equivalence partitioning + boundary values**
+     (one per class, plus every edge: empty / one / many, first / last, zero / max);
+   - multiple dimensions → **pairwise / t-wise** (all 2-way combinations, not the full cross-product);
+   - statistical guarantee on random inputs → the **rule of three** (0 failures in N ⇒ ~95% confident
+     the failure rate < 3/N; e.g. < 1% needs ≈ 300 cases) — this, NOT `sqrt(N)` or any ungrounded
+     fraction, is the real math;
+   - open-ended hunt → **property-based testing / fuzzing to a budget**, reporting cases-run +
+     failures + the shrunk counterexample.
+3. **Always mandatory, regardless of tier:** every **boundary** case and the **known-failure input**
+   (the exact input that broke before, the reverse direction of a sync, the interrupted / raced
+   action). These are not samples — they are required.
+
+**The thoroughness tier is a human-set knob, locked into `OBJECTIVE.md` at Gate 0.** The *population*
+is auto-derived from the codebase; the *tier* is a cost / risk / budget tradeoff only the human should
+set, so it is surfaced — not silently chosen by an agent:
+
+| Tier | Coverage policy |
+|---|---|
+| `smoke` | every input **class** + boundaries + known-failure inputs (fast, deterministic) |
+| `exhaustive` *(default)* | **every** case in the enumerable population + boundaries + known-failure inputs |
+| `deep` | `exhaustive` + pairwise across dimensions + fuzz-to-budget |
+
+Default = `exhaustive` (drop toward `smoke` only when a population is genuinely too large / expensive
+to enumerate; raise to `deep` for the most safety-critical vetting). **Supervised:** surface the
+default tier at the rubric-lock gate for the human to confirm or override. **Unattended:** the tier
+must already be set in the human-locked `OBJECTIVE.md` before the run starts. The decomposer turns the
+tier into each criterion's `coverage` denominator; **G3** refuses a population-claim with no
+denominator (a floor like "≥ N" is not a denominator); the **blind auditor** FAILs evidence whose
+coverage does not meet the declared tier.
 
 ---
 
