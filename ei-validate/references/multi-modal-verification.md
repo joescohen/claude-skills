@@ -5,9 +5,37 @@ guidance on how to cross-reference visual, structural, and interactive evidence.
 
 ---
 
-## The Screenshot-First Rule
+## The Screenshot Rule — gestalt from pixels, content from the DOM
 
-Always take a screenshot before declaring something "works." The screenshot is your ground truth.
+Take a screenshot before declaring something "works" — but be precise about what a screenshot
+can and cannot prove. A screenshot is ground truth for **visual gestalt**: layout, overlap,
+z-index, color, alignment, "did it render at all." It is **not** reliable ground truth for
+**content or legibility** — exact text, numeric values, font size, and contrast must be read
+from the DOM / computed CSS (see "DOM / Accessibility Tree Verification" below).
+
+Why: every image you view is downscaled by the vision model to ≤1568px on its long edge and
+~1.15 megapixels. Fine text in a full-window capture is destroyed by that resize — you end up
+squinting at 6px glyphs and guessing. Don't guess; read `getComputedStyle`.
+
+### Capture quality — make the screenshot worth reading
+
+A blurry screenshot is not evidence. Before you rely on a screenshot for a visual claim:
+
+- **Scope to the element under test, not the whole window.** Capture the one panel/component
+  you are judging (element- or region-scoped screenshot) so it fills the image budget instead
+  of sharing pixels with two other panels. A 700px-wide panel captured alone is legible; the
+  same panel inside a 1440px three-pane capture is not.
+- **Capture at 2× device scale** (`deviceScaleFactor: 2` in Playwright/Puppeteer; on a browser
+  MCP that can't set DPR, zoom the page or scroll the target to fill the viewport before
+  capturing). 2× renders glyphs with double the detail *before* the model's downscale.
+- **Keep the delivered image ≤~1568px long edge / ~1.1MP.** 2× of a *small scoped region* stays
+  under budget; 2× of a full page blows past it and gets shrunk back to mush. Never use a
+  full-page (`fullPage: true`) capture to read detail — it is for structure/scroll only.
+- **Prefer PNG** for UI (sharp text edges); JPEG compression smears small type.
+
+If a screenshot is too low-resolution to read the text you are judging, that is a **capture
+failure — not a pass and not a fail.** Re-capture scoped + at 2×, or fall back to computed CSS.
+Never record a verdict from an illegible image.
 
 **What to look for in a screenshot:**
 

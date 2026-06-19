@@ -4,7 +4,9 @@
 No single source is trusted. Confidence comes from **agreement across structurally independent
 source types**: {expert/editorial} + {niche-community} + {de-biased crowd} (+ {local-language},
 {YouTube} where relevant). Two mirrors of the same crowd ≠ two sources. Convergence → confidence;
-divergence → investigate and surface (don't hide).
+divergence → investigate and surface (don't hide). **Convergence is symmetric:** the bar that raises a
+pick (≥2 independent types agreeing) also governs what may LOWER it — a negative signal must clear the
+Outlier-Robustness gate (below) before it demotes/burns a candidate, or it is surfaced as a caveat, not a cut.
 
 ## Why mainstream ratings mislead (defend against these)
 - J-shaped self-selection; top-end compression (everything clusters 4.x); fake reviews;
@@ -29,13 +31,47 @@ text-required crowd ≫ star-only crowd.
 
 ## Distribution = the key anti-fraud signal
 A bimodal distribution (flood of 5★ + retaliatory 1★) reveals manipulation; a normal-ish spread
-~3.8–4.4 is often more trustworthy than a tight all-5★ low-volume listing. **No mainstream API
-exposes the histogram** → read it off the UI with Claude-in-Chrome (see data-sources.md). If you
-can only get the mean, say so and lower confidence.
+~3.8–4.4 is often more trustworthy than a tight all-5★ low-volume listing. **For Google, pull the
+histogram as structured per-star counts via Apify** (`compass/crawler-google-places` with
+`scrapePlaceDetailPage: true` → `reviewsDistribution` — verified live 2026-06; see data-sources.md);
+its `reviewsTags` even tallies "tourist trap" directly. **Claude-in-Chrome is the FALLBACK** only for
+sources whose actor doesn't expose the breakdown (some Yelp/TripAdvisor/Booking surfaces). If you can
+only get the mean, say so and lower confidence.
 
 ## Fake-signal tells (client-side usable)
 Single-review accounts; uniform-sounding reviews ("great food, great service, great atmosphere");
 sudden 5★ bursts after mixed history; generic superlatives with no specifics; thin volume.
+
+## Outlier-Robustness gate (ALWAYS-ON — the SYMMETRIC counterpart to anti-inflation)
+The anti-inflation machinery above is asymmetric: every tool points at demoting an over-rated pick
+(read the 1-stars, pull the distribution, the verifier's job is to REFUTE). The mirror error —
+**burning a genuinely good place over a couple of outlier negatives or one dismissive critic** — must
+be guarded with equal force. Convergence is symmetric: we require ≥2 independent source TYPES to
+CONFIRM a pick, so a negative signal must clear a comparable bar before it may DEMOTE one.
+
+**Before any negative signal eliminates / SKIPs / burns a candidate, it must pass ALL of:**
+1. **Base rate, not count.** Express negatives as a PROPORTION of the volume, never a bare count — a
+   denominator is mandatory. "2 one-stars" is meaningless: 2/200 (1%) is noise; 2/12 (17%) is worth a look.
+2. **Recurrence across reviews AND types.** The SAME specific complaint must recur across many reviews
+   *and* be echoed by ≥2 independent source types. A dealbreaker named once is an anecdote; named by a
+   real share of reviewers and a second source type is signal. (This is the verifier's "recurring
+   dealbreaker" test — now also used PROTECTIVELY, not only to kill.)
+3. **Severity class.** Separate **systemic dealbreakers** (hygiene/safety, bait-and-switch, chronic
+   rudeness, a real quality collapse) from **taste-mismatch / one-off bad night / "too touristy for a
+   local."** Only a systemic dealbreaker may burn; the soft classes become caveats, not eliminations.
+   (Calibrate "touristy/Americanized" critiques to the user's baseline, not a local's — see USER-PROFILE.)
+4. **Recency clustering.** A recent CLUSTER of the same complaint (new owner, declined kitchen) is a real
+   decline signal and may burn; negatives scattered through old reviews amid recent praise are stale
+   outliers → caveat, not cut.
+5. **Critic-singularity cap.** A single expert's dismissive verdict is ONE source-type datum. It can
+   LOWER a pick but cannot, alone, overturn strong cross-source convergence. One critic ≠ a veto.
+
+**Default disposition:** a negative that does NOT clear all five → the candidate STAYS on the board with
+an honest caveat surfaced; it is **flagged, not eliminated.** Only a negative that clears all five may
+demote/burn — and when it does, cite the recurrence evidence (proportion + the second type that echoes
+it), never just "had some bad reviews." The deterministic math (`score.py`) is already outlier-robust
+via Bayesian shrinkage + recency weighting; this gate disciplines the NARRATIVE complaint-reading layer,
+which is where un-tested burns actually happen.
 
 ## Data-Sufficiency Gate → confidence tier
 Score each candidate on: **independence** (# independent source TYPES), **depth** (enough real text,
@@ -43,7 +79,7 @@ not just stars), **recency** (signal within ~12–18mo), **distribution obtained
 - **HIGH** — ≥3 independent types, rich + recent, converging → confident pick + evidence.
 - **MEDIUM** — 2 types / some text → recommend WITH explicit caveats; name what's missing.
 - **LOW** — 1 type, or thin/stale, or sources contradict → **do NOT fake a "best."** Say what's thin,
-  offer to dig (Chrome histogram / Reddit via Apify / Italian-language). LOW/thin may be assigned
+  offer to dig (Apify Google-Maps histogram / Reddit via Apify / Italian-language). LOW/thin may be assigned
   ONLY after an entity-consolidation attempt (Verification gate, consolidate direction): a thin
   reading of a single listing is not a LOW footprint until the canonical-listing search has been
   run and still comes back thin. A candidate the user introduced (already on their itinerary/list)
