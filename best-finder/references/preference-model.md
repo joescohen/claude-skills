@@ -19,7 +19,11 @@ laddering — the same frameworks `strategy.md` function D cites.
 1. **Ladder up on capture.** A stated surface-pref is a MEANS → ladder to its L1 value; store BOTH (value
    → L1 durable, surface form → L3 scoped). "Good views" → *beauty-as-lived*. Store the L1 value
    **silently** for any decision-bearing pref; only **probe** the user when load-bearing — that probe IS
-   the inference guard (`references/trip-architecture.md`).
+   the inference guard (`references/trip-architecture.md`). **Two gates on durable promotion:** (a) in
+   **explore** discovery-intent (SKILL.md Phase 1), DON'T silently promote a reaction to L1 — keep it L3
+   (trip-scoped) until confirmed; (b) when the **session contradicts a carried-in L1 value, the session
+   wins** for this run, and the contradicted value is surfaced (not silently overridden) rather than
+   re-asserted from the profile.
 2. **Don't transplant the shape.** A new leg never reuses a prior leg's L3 concrete criteria. Load L1,
    classify the place-archetype, RE-INSTANTIATE L2 fresh; surface to the user when a value's shape changes
    by place. (Durable control for the shape-transplant failure — the conductor defaulting the user into a

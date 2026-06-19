@@ -197,8 +197,8 @@ for all VP rows. If `N/A`, skip this section entirely (no visual surface to test
 Generate at minimum:
 
 ```
-| VM-VP-01 | RISK-VP-1 | <visual_polish_tier> | Inspection | Visual | Screenshot each major visual component at 1280px; assess legibility, line weight, visual weight balance | All text ≥10px rendered, strokes ≥1.5px for functional lines, visuals fill 60-80% of container | 4×4 = 16 |
-| VM-VP-02 | RISK-VP-1 | <visual_polish_tier> | Inspection | Visual | Screenshot each major visual component at 375px; assess same criteria at mobile | Same criteria hold at mobile; no text becomes invisible, no visuals collapse to near-zero size | 3×4 = 12 |
+| VM-VP-01 | RISK-VP-1 | <visual_polish_tier> | Inspection | Visual | For each major visual component at 1280px: read `getComputedStyle().fontSize` + box geometry for the measurable criteria, AND take an element-scoped 2× screenshot for visual-weight/balance | All text computed ≥10px (measured, not eyeballed), strokes ≥1.5px for functional lines, visuals fill 60-80% of container | 4×4 = 16 |
+| VM-VP-02 | RISK-VP-1 | <visual_polish_tier> | Inspection | Visual | Repeat at 375px: computed font sizes from `getComputedStyle`, element-scoped 2× screenshot for the gestalt | Same criteria hold at mobile (measured); no text computes to invisible, no visuals collapse to near-zero size | 3×4 = 12 |
 ```
 
 If the spec identifies specific visual components (SVG diagrams, animations, 3D renders),

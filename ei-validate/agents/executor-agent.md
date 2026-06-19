@@ -118,8 +118,15 @@ Execute the exact action described in the row's `Action` column. Then immediatel
 
 **`web_ui` evidence:**
 1. **Take a screenshot** — no exceptions. A step without a screenshot is unverified.
+   Make it readable: scope the capture to the panel/component under test (not the whole
+   window) and capture at 2× device scale, keeping the image ≤~1568px long edge / ~1.1MP so
+   the vision model doesn't downscale your text into mush. An illegible screenshot is a capture
+   failure to re-take, not evidence — see `references/multi-modal-verification.md` → "Capture
+   quality."
 2. **Read the DOM** — use `read_page` or `preview_snapshot` to inspect element states
-3. **Compare visual vs DOM** — if they disagree, that's a finding
+3. **Compare visual vs DOM** — if they disagree, that's a finding. For any claim about exact
+   text, numeric values, font size, or contrast, the DOM / computed CSS is the authority — do
+   not read those off the screenshot.
 
 **`cli` evidence:**
 1. **Capture full stdout and stderr** — no exceptions. A step without captured output is unverified.
@@ -179,6 +186,13 @@ presence alone is a false-positive when the user complaint will be "I don't see 
 this is the 2026-05-16 lesson
 `lesson-visibility-validation-must-include-computed-css-not-just-html-presence` (active
 in CEI's `learning/lessons/active/`).
+
+The same rule governs **legibility and size** claims ("text ≥ 10px", "readable at
+mobile", "stroke ≥ 1.5px"): read these from `getComputedStyle().fontSize` and the
+element's box geometry, not by eyeballing a downscaled screenshot — a resized image
+cannot prove a 10px threshold. The screenshot confirms the *gestalt* (is it there, is it
+overlapping); computed CSS confirms the *measurement*. If you find yourself squinting to
+judge a size or reading a value off blurry pixels, stop and query the DOM instead.
 
 ### 3c: Exercise Every Knob (while in context)
 

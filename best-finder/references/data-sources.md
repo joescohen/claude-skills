@@ -92,6 +92,44 @@ Reference implementation in this repo:
 `best-options-research/runs/italy-2026/raw/apify_reddit_full.py`. Plus **Hacker News Algolia API**
 (free, no key) as an independent corroborating source.
 
+## Apify efficiency — remove TRUE redundancy, NEVER skip a context-needed pull
+**Guiding rule (integrity FIRST):** efficiency may only remove a call that would return data you ALREADY
+hold for THIS exact context. It must NEVER skip a pull a different context needs. **A different query,
+candidate set, or angle = a fresh pull. When in doubt, PULL — sourcing integrity outranks cost** (sourcing
+is the thesis). The real waste in a multi-variation session is NOT "Reddit got called again on a new
+angle" — that's correct behavior — it's calling the actor once PER CANDIDATE, or double-firing actors,
+when ONE region pull + client-side filtering already covers the whole field. The safe wins:
+
+1. **Region-batch, never per-candidate.** Reddit is a REGION-level pull: ONE subreddit-corpus pull per
+   region per run, then mine ALL candidates from that single corpus client-side. NEVER one Apify call per
+   finalist. (Same for the Google-Maps actor — one detail call per place, reused for every mention of that
+   place WITHIN the run.) This is the biggest real win and it skips nothing — you pull the full corpus once
+   and re-filter.
+2. **Single-actor default; escalate only for contested finalists.** Default = the self-seeding
+   `automation-lab/reddit-scraper` ONLY (comments in one call; `score:0` is handled by cross-thread
+   convergence weighting — methodology.md). Add the score-returning actor
+   (`clearpath/reddit-post-comments-bulk-scraper`) ONLY for the 1–3 finalists where a verdict actually
+   hinges on upvote weight — never across the whole field. The data is still pulled; you just don't
+   double-call for scores you won't use.
+3. **Don't re-fire the IDENTICAL query you just ran THIS session.** If you already pulled the exact
+   `(subreddit-set × query-terms)` corpus moments ago in this same session and the candidate set + angle
+   are unchanged, reuse that in-session pull. That is the ONLY reuse allowed — it is keyed on the full
+   query, not the region, and it does NOT persist across runs/days. **No TTL'd disk cache**: a stale or
+   wrong-angle corpus served to a new-context run is exactly the under-sourcing failure to avoid.
+4. **Bound every call.** `sort:"top"` + `filterKeywords` + subreddit allowlist + caps
+   (`maxPostsPerSource` ~15–25, `maxCommentsPerPost` ~20–40). A tight pull is one-and-done; a noisy pull
+   forces a re-run. Stakes scales these caps (low = shallow/top-only; high = deeper + the score actor on
+   finalists) — DEPTH scales, presence does not.
+5. **Free-first harvest at LOW stakes.** Native `WebSearch site:reddit.com <terms>` still returns
+   snippet-level signal + permalinks for free (only the direct 403 fetch is dead). At LOW stakes, if the
+   free snippet pass + HN Algolia (free) + YouTube (free) already give convergence, you've satisfied the
+   Reddit type without the paid actor. At MEDIUM/HIGH, or whenever the free pass is thin, fire Apify — the
+   documented recovery, not an opt-out.
+
+Net: removes the per-candidate and double-actor waste and bounds each call — WITHOUT ever skipping a pull a
+new context needs. A genuinely new angle always gets fresh data; only literal same-session, same-query
+re-fires are avoided.
+
 ## Social media
 - **YouTube: INCLUDE** — Data API (free, ~100 searches/day) + transcripts (long-form honest reviews).
 - **Instagram/TikTok: only via `site:` web search** (free); their APIs are useless/inaccessible.

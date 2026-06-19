@@ -37,8 +37,13 @@ It is a **layered preference model** (L1/L2/L3 — see `references/preference-mo
   **Change Log**.
 
 **Continuous-needs-capture protocol (NON-NEGOTIABLE):**
-1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. Never ask for
-   what's already recorded. If no profile exists, create one from a short intake.
+1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. Don't re-ask for
+   **hard facts** already recorded (home city, dietary, fixed constraints). But **surface-before-apply**
+   for **decision-bearing values**: before the carried-in L1 values shape this run, name the 3–5 that
+   will and let the user set any aside for *this* trip — *"Carrying in from past trips: [values]. Still
+   you for this one, or park any?"* A parked value is **muted for this run only** (not deleted); silence
+   = it still applies. This is the per-run override that stops an old reaction from silently steering a
+   fresh discovery. If no profile exists, create one from a short intake.
 2. **Throughout the session:** whenever the user states a preference, constraint, like/dislike,
    reaction to an option, or makes a decision — **append it immediately** to the active trip
    file (and promote cross-trip patterns to `USER-PROFILE.md`), with a dated Change Log entry
@@ -83,6 +88,14 @@ Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended defau
 - **Category** (restaurant · stay · experience) or **trip-planning** mode.
 - **Where + when** (location → loads the geography source map; dates → seasonality + booking urgency).
 - **Per-trip "mode"** (blowout / strategic-splurge / value-aware / local-hidden-gem / specific-need).
+- **⭐ Discovery intent (explore vs exploit)** — a separate axis from mode and stakes. Is the user
+  *dialing in* what they already know they like (**exploit** — lean on the profile as a strong prior),
+  or *discovering*, where their usual may not apply (**explore**)? In **explore**: treat the profile as a
+  **light prior**, widen the stretch, show range over fit, and keep capture **trip-scoped** — do NOT
+  promote this run's reactions to durable L1 values (they stay in the trip file as L3 until confirmed).
+  Offer it as a menu; default to **exploit** on a focused single lookup, **explore** when the user
+  signals browsing/openness ("surprise me", "what am I missing", "first time here"). When the session
+  contradicts a carried-in value, the session wins (see `references/preference-model.md` rule 1).
 - **⭐ Stakes gate:** "How much does nailing this matter?" Stakes scales DEPTH (fan-out per
   source type) and adversarial verification — NEVER which independent source TYPES are
   consulted (that is a fixed floor; see Phase 3). Low → shallow fan-out, de-biased top pick +
