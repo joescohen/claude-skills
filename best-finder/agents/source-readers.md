@@ -14,6 +14,14 @@ budget (from the user's needs file), the geography-correct source list (data-sou
 output path (PINNED, absolute — see SKILL.md → Output locations)
 `~/Engineering/projects/best-options-research/runs/<trip-id>/raw/<type>-<query>.md`.
 
+**LOCAL-SERVICE runs (mechanic/dentist/plumber/HVAC/vet/…):** same three independent legs, but the
+**expert reader targets certification/licensing** (AAA/RepairPal/ASE/BBB, state boards, trade
+authorities — see the Local-service source maps in `data-sources.md`), NOT travel curators; the
+community reader hunts the honest-recommendation + AVOID/upsell-trap lists (r/<City>, r/MechanicAdvice,
+Nextdoor, Yelp/Birdeye review TEXT); the crowd reader pulls the Google-Maps histogram exactly as below
+(the anti-inflation core is unchanged — local services are a prime manipulated-review category). Inject
+the user's proximity preference and the specific item (vehicle/home system) into every reader.
+
 ---
 ## Expert-curation reader
 Find genuinely great candidates from the AUTHORITATIVE, gaming-resistant CURATED sources for this

@@ -1,7 +1,10 @@
 # Output style — paint the picture, tag provenance, run the critique loop
 
 ## Paint the picture (don't dump a scored list)
-For each recommended option, give an **experiential picture**, not just metrics:
+For each recommended option, give a **real picture**, not just metrics. The dimensions differ by
+category family:
+
+**TRAVEL (restaurant · stay · experience):**
 - **Vibe / experience** — what it actually feels like (intimate vs grand, owner-run vs polished,
   setting, who else is there, the romantic/standout texture).
 - **Day-to-day reality** — the practical truth the user must live with. For stays this MUST include
@@ -10,6 +13,19 @@ For each recommended option, give an **experiential picture**, not just metrics:
   difficulty, time cost, crowds.
 - **Fit** — 2–3 sentences weighing it against THIS user's stated wants + mode + budget; who it's
   perfect for vs who'd be frustrated.
+
+**LOCAL-SERVICE (mechanic · dentist · plumber · HVAC · vet · …):** paint TRUST + COMPETENCE, not vibe:
+- **Trust signals** — the anti-upsell tells that actually matter: does the shop call/quote before doing
+  work, written estimates, "no upsell / fair pricing" surfacing in the review THEMES by name, honesty
+  reputation across sources. This is the lead, not a footnote.
+- **Competence + fit-to-job** — what it's genuinely good at vs not (a great tire shop ≠ your
+  engine-diagnosis shop); make/brand or system-specific competence when it matters; certifications held.
+- **Practical reality** — distance from the user (proximity is usually load-bearing — lead with it),
+  appointment vs walk-in, turnaround, price posture/transparency.
+- **Fit** — 2–3 sentences: who this is the right call for (everyday maintenance vs a complex job) and
+  when to pick a different option on the list.
+The distribution IS the story here: a 4.9 with zero 1★ beats a 4.5 with a 10% 1★ tail; when the
+best-credentialed option has the worst distribution, SAY SO and let the user weigh it.
 
 Keep it vivid but **accurate** — flag anything unverified; never invent specifics.
 
@@ -56,10 +72,18 @@ The user wants to see *what to do* immediately, then the context/criteria/method
 justifies it — never the reverse. Do NOT open with paragraphs of context, "what you're looking for,"
 or "how I scored." A page that buries the picks below the fold is wrong even if every section is present.
 
+**CATEGORY-FAMILY carve-out (photos).** The photo gallery + shared lightbox below are REQUIRED for
+TRAVEL deliverables (a stay/restaurant/experience is a visual decision). For **LOCAL-SERVICE**
+deliverables they are **optional and usually omitted** — storefront photos of a mechanic/plumber/dentist
+rarely inform the choice; the trust/distribution signal does. A local-service page uses the same
+picks-first skeleton, boilerplate palette, and card structure, but MAY drop the `.gallery`/`.lb`
+gallery apparatus. Validate a local-service page with `validate_deliverable.py --category local-service`
+(drops the gallery/lightbox checks); validate a travel page with the default (gallery required).
+
 **STRUCTURAL-CONSISTENCY RULE — every page is built from the same skeleton (NON-NEGOTIABLE).** Do not
 free-improvise the markup per run; structural drift is a defect. Every deliverable MUST include the same
-boilerplate and use the same card structure so layout (and the photo gallery) lands identically every
-time:
+boilerplate and use the same card structure so layout (and, for travel, the photo gallery) lands
+identically every time:
 - **Always include the boilerplate**: the `:root` palette vars, the base component CSS, the gallery CSS,
   and the shared lightbox `<script>` — all of it, every page. Source of truth: `references/gallery-lightbox.md`.
 - **Every pick card uses the canonical pick-card skeleton** from `references/gallery-lightbox.md`
@@ -131,12 +155,13 @@ inline CSS (no external deps). Save to the PINNED deliverable base —
 Output locations — never a cwd-relative `runs/...` path) — and send via SendUserFile.
 
 **STRUCTURAL GATE (run it, don't eyeball it).** Before SendUserFile, run
-`python3 <skill>/scripts/validate_deliverable.py <page.html>` — it executes the NON-NEGOTIABLE rules
-above (pinned path, picks-first ordering, pick-card skeleton, gallery-in-every-scorebox,
-no hotlinked images, shared boilerplate present). A FAIL is ship-blocking: fix and re-run until it
-passes; WARNs are surfaced in chat alongside the file. The arc-board is exempt (no pick cards).
-The script self-tests with `--selftest` — if you change the skeleton contract, update the validator
-and its selftest in the same edit.
+`python3 <skill>/scripts/validate_deliverable.py <page.html>` for a TRAVEL page, or
+`… <page.html> --category local-service` for a local-service page (the flag drops the gallery/lightbox
+checks that don't apply). It executes the NON-NEGOTIABLE rules above (pinned path, picks-first ordering,
+pick-card skeleton, no hotlinked images, shared boilerplate; gallery-in-every-scorebox for travel only).
+A FAIL is ship-blocking: fix and re-run until it passes; WARNs are surfaced in chat alongside the file.
+The arc-board is exempt (no pick cards). The script self-tests with `--selftest` — if you change the
+skeleton contract, update the validator and its selftest in the same edit.
 Reference implementation (canonical structure + visual style — its section *order* is superseded by the
 ordering rule above): `best-options-research/runs/italy-2026/tuscany-castles-rerun.html` (the version
 WITH per-pick galleries + lightbox; this is the structural reference every page should match).

@@ -1,16 +1,19 @@
 ---
 name: best-finder
 description: >
-  Use when the user wants to find genuinely BEST options — restaurants, places to stay
-  (hotels/Airbnb/villas), or experiences/activities — or to plan/optimize a trip, while
-  defeating rating inflation on mainstream platforms (Yelp, Google, TripAdvisor, Booking).
-  It guides with option-menus at every step, builds a destination strategy (how to "do" a
-  place + what to capitalize on where across a multi-stop trip), paints experiential
-  pictures of options weighed against what the user wants, and CONTINUOUSLY captures the
-  user's needs to a persistent file. Trigger phrases: "find the best X", "where should we
-  stay / eat", "how do we do [place]", "plan my trip to [place]", "is this place actually
-  good / overrated", "best [restaurant/hotel/wine tour/activity] in [place]", "low-key /
-  legit / hidden-gem spots", "what am I missing".
+  Use when the user wants to find the genuinely BEST option and defeat rating inflation on
+  mainstream platforms (Yelp, Google, TripAdvisor, Booking) — across TWO category families:
+  (1) TRAVEL — restaurants, places to stay (hotels/Airbnb/villas), experiences/activities, or
+  planning/optimizing a trip; and (2) LOCAL SERVICE — a trusted, competent, fair-priced local
+  provider (mechanic/auto repair & tires, dentist/doctor, plumber/HVAC/electrician & other home
+  services, salon/barber, vet, gym, etc.). It guides with option-menus, runs a convergence engine
+  over structurally independent sources (expert/certification + community + a de-biased crowd
+  distribution), paints an honest picture of each option weighed against what the user wants, and
+  captures needs to a persistent file. Trigger phrases: "find the best X", "where should we stay /
+  eat", "plan my trip to [place]", "is this place actually good / overrated", "best [restaurant /
+  hotel / wine tour / activity] in [place]", "best / most honest [mechanic / plumber / dentist /
+  HVAC / vet / barber] near me", "who should I take my car to", "a shop that won't rip me off",
+  "low-key / legit / hidden-gem spots", "what am I missing".
 ---
 
 # best-finder
@@ -32,16 +35,24 @@ It is a **layered preference model** (L1/L2/L3 — see `references/preference-mo
 - `USER-PROFILE.md` — durable, cross-trip: **L1 core values** (place-agnostic) + the **L2 context-shape
   mapping** (`value × place-archetype → criteria`, append-only) + who the user is, taste tendencies,
   decision style, recurring constraints, interaction preferences.
-- `trips/<trip-id>.md` — the living needs doc for an active trip: context, interests, per-category needs
-  + current picks, **L3 instance decisions + per-leg salience + lead value**, open decisions, and a dated
-  **Change Log**.
+- `trips/<id>.md` — the living needs doc for one active piece of work (a **trip** OR a standing
+  **local-service query**). The directory name is historical; entries need not be travel. Two schemas:
+  - **TRAVEL:** context, interests, per-category needs + current picks, **L3 instance decisions +
+    per-leg salience + lead value**, open decisions, `## Current Itinerary`, `## Trip Architecture`,
+    dated **Change Log**.
+  - **LOCAL-SERVICE:** `## Context` (category, location + proximity pref, the specific item — e.g.
+    the vehicle, the home system), `## Buying criteria` (the category rubric — honesty/no-upsell,
+    written estimates, competence, price transparency, fit-to-job), `## Current picks`, `## Sourcing`,
+    dated **Change Log**. NO Itinerary / Trip-Architecture sections (they don't apply). See
+    `trips/car-repair-baltimore-2026.md` as the reference instance.
 
-**Trip lifecycle (frontmatter `status:` — STEP 0 keys on it):**
-- Every trip file opens with YAML frontmatter: `status: active | reference | completed`.
-  **active** = an upcoming/live dated trip (the default capture target); **reference** = an undated
-  standing hunt (e.g. "best restaurants in the home city"); **completed** = the trip happened —
-  set it promptly when a trip's dates pass; completed/archived trips are excluded from active-trip
-  selection. Multiple actives are legal; the newest-modified active wins.
+**Lifecycle (frontmatter `status:` — STEP 0 keys on it):**
+- Every state file opens with YAML frontmatter: `status: active | reference | completed`.
+  **active** = a live dated trip (the default travel capture target); **reference** = an undated
+  standing hunt (e.g. "best restaurants in the home city," or a local-service query like "car repair
+  near Canton" that recurs); **completed** = the trip happened — set it promptly when dates pass;
+  completed/archived files are excluded from active selection. Multiple actives are legal; the
+  newest-modified active wins. Local-service queries are normally `reference` (they have no dates).
 - **This skill fires NOTHING in the background.** It runs ONLY when explicitly invoked (the Skill
   tool / an explicit `/best-finder` call). There are deliberately NO always-on hooks — a prior
   hook-based capture/flush enforcement layer was removed 2026-07-18 because it injected travel
@@ -91,25 +102,49 @@ which is the bug this rule exists to prevent). `<trip-id>` matches the state tri
   - every raw reader / strategy / verifier file → `…/<trip-id>/raw/<type>-<query>.md`
   This base is the single source of truth for the path; the agent prompts and output-style.md reference it.
 
+## Category families — TRAVEL vs LOCAL-SERVICE (which layers apply)
+best-finder covers two families. **The convergence engine, verification gate, data-sufficiency
+gate, anti-inflation scoring, and continuous capture are IDENTICAL for both** — they are
+category-agnostic. Only the *travel-shaping* layers differ:
+
+| Layer | TRAVEL (restaurant · stay · experience · trip-planning) | LOCAL-SERVICE (mechanic · dentist · plumber · HVAC · vet · barber · …) |
+|---|---|---|
+| Phase 1.5 Value Instantiation (place-archetypes) | **applies** | **SKIP** — place-archetypes are travel-only; use the category buying-criteria rubric instead |
+| Phase 2 Trip Architecture (PAINT→ELICIT→LOCK, arc-board, day-budget, Peak-End) | **applies** on multi-leg/MEDIUM+ | **SKIP entirely** — a local service is a single-lookup, non-trip decision |
+| Expert/editorial source leg | travel curators (Michelin, Gambero Rosso, Relais & Châteaux…) | **certification/licensing bodies** (AAA, RepairPal, ASE, BBB, state boards, trade authorities) — see `references/data-sources.md` |
+| Output "painted picture" | vibe + day-to-day reality incl. food/dining logistics | **trust + competence + price transparency + fit-to-job** — see `references/output-style.md` |
+| State schema | trip file (`## Current Itinerary`, `## Trip Architecture`) | query file (Context · Buying-criteria · Picks · Sourcing · Change Log) — see below |
+| Deliverable photo gallery | required | **optional** (storefront photos rarely inform the decision) |
+
+**A LOCAL-SERVICE run is: STEP 0 → PHASE 1 (scope+stakes) → PHASE 3 (discovery) → 3.5 → 4 → 5.**
+It skips 1.5 and 2 outright. When in doubt about family, ask in Phase 1.
+
 ## The pipeline
 
 ```
-STEP 0    Load state (profile + active trip)            ← always
-PHASE 1   Scope + Stakes (option-menus)
-PHASE 1.5 Value Instantiation (L1 → archetype → L2 criteria)  → references/preference-model.md
-PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  → references/strategy.md + references/trip-architecture.md + agents/strategy-researcher.md
+STEP 0    Load state (profile + active trip/query)      ← always
+PHASE 1   Scope + Stakes + CATEGORY FAMILY (option-menus)
+PHASE 1.5 Value Instantiation (L1 → archetype → L2 criteria)  → TRAVEL only · references/preference-model.md
+PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  → TRAVEL only · references/strategy.md + references/trip-architecture.md + agents/strategy-researcher.md
 PHASE 3   Discovery (convergence engine)  → references/methodology.md + agents/
 PHASE 3.5 Verification gate (verify reader claims vs ground truth)  → references/methodology.md
 PHASE 4   Data-Sufficiency Gate (confidence tiers)
 PHASE 5   Painted-picture output + critique-refine loop  → references/output-style.md
 (capture needs continuously across all phases; conductor is the sole state-writer)
+(LOCAL-SERVICE family: run STEP 0 → 1 → 3 → 3.5 → 4 → 5; skip 1.5 and 2)
 ```
 
 ### PHASE 1 — Scope + Stakes (always option-menus)
 Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended default + a
 "you decide / other" escape. Establish (skipping anything already in state):
-- **Category** (restaurant · stay · experience) or **trip-planning** mode.
-- **Where + when** (location → loads the geography source map; dates → seasonality + booking urgency).
+- **Category family + category.** TRAVEL → `restaurant · stay · experience · trip-planning`;
+  LOCAL-SERVICE → `auto repair/tires · dentist/doctor · plumber/HVAC/electrician · home services ·
+  salon/barber · vet · other`. The family selects which layers run (see the table above): a
+  LOCAL-SERVICE category **skips Phase 1.5 and Phase 2** and goes straight scope → discovery →
+  output. Usually the family is obvious from the request ("best mechanic near me" = local-service);
+  only ask if genuinely ambiguous.
+- **Where + when** (location → loads the geography/certification source map; dates → seasonality +
+  booking urgency for travel; for local-service "when" is usually just urgency).
 - **Per-trip "mode"** (blowout / strategic-splurge / value-aware / local-hidden-gem / specific-need).
 - **⭐ Discovery intent (explore vs exploit)** — a separate axis from mode and stakes. Is the user
   *dialing in* what they already know they like (**exploit** — lean on the profile as a strong prior),

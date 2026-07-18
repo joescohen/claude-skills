@@ -7,8 +7,13 @@ references/gallery-lightbox.md into an executable gate the conductor runs
 BEFORE SendUserFile. Pure stdlib.
 
 Usage:
-    python3 validate_deliverable.py <page.html>     # exit 0 = pass, 1 = failures
-    python3 validate_deliverable.py --selftest      # prove the gate can fail
+    python3 validate_deliverable.py <page.html>                        # travel (galleries required)
+    python3 validate_deliverable.py <page.html> --category local-service  # galleries optional
+    python3 validate_deliverable.py --selftest                         # prove the gate can fail
+
+Category families (see SKILL.md → Category families): TRAVEL pages require the photo gallery +
+lightbox on every pick card; LOCAL-SERVICE pages (mechanic/dentist/plumber/…) omit them (storefront
+photos rarely inform the decision), so --category local-service drops the gallery/lightbox checks.
 
 Checks (FAIL = ship-blocking, WARN = surface but don't block):
   path      FAIL  page lives under the pinned deliverable base (runs/<trip-id>/)
@@ -91,7 +96,9 @@ class Structure(HTMLParser):
             self._card_depth = None
 
 
-def validate(path, html=None):
+def validate(path, html=None, category="travel"):
+    # category: "travel" (galleries required) | "local-service" (galleries optional)
+    gallery_required = category != "local-service"
     findings = []  # (level, code, message)
 
     def fail(code, msg):
@@ -120,12 +127,13 @@ def validate(path, html=None):
     for n, req in s.card_missing:
         fail("cards", f"pick card #{n} is missing required .{req}")
 
-    # gallery placement + data block
-    if s.scoreboxes and s.galleries_in_scorebox < s.scoreboxes:
-        fail("gallery", f"only {s.galleries_in_scorebox}/{s.scoreboxes} scoreboxes contain a "
-             ".gallery[data-gallery] placeholder (required on EVERY pick card)")
-    if s.cards and 'id="gallery-data"' not in html:
-        fail("gallery", 'missing <script id="gallery-data"> block (galleries will render empty)')
+    # gallery placement + data block (TRAVEL only — local-service omits photos)
+    if gallery_required:
+        if s.scoreboxes and s.galleries_in_scorebox < s.scoreboxes:
+            fail("gallery", f"only {s.galleries_in_scorebox}/{s.scoreboxes} scoreboxes contain a "
+                 ".gallery[data-gallery] placeholder (required on EVERY travel pick card)")
+        if s.cards and 'id="gallery-data"' not in html:
+            fail("gallery", 'missing <script id="gallery-data"> block (galleries will render empty)')
 
     # ordering: answer first — the first pick card must precede the supporting
     # "why" SECTIONS. Match markers only in heading context (<h2>/<h3>), so a
@@ -151,7 +159,7 @@ def validate(path, html=None):
     # shared boilerplate
     if ":root{" not in html.replace(" ", "") and ":root {" not in html:
         fail("boiler", "missing :root palette vars (shared boilerplate not included)")
-    if s.cards and ".lb{" not in html.replace(" ", ""):
+    if gallery_required and s.cards and ".lb{" not in html.replace(" ", ""):
         fail("boiler", "missing lightbox CSS (.lb) — the shared lightbox boilerplate is required")
 
     # softer checks
@@ -178,9 +186,9 @@ GOOD = """<!doctype html><html><head><style>:root{--terra:#a55;--line:#eee;--mut
 def selftest():
     ok = True
 
-    def expect(name, html, code, should_fail):
+    def expect(name, html, code, should_fail, category="travel"):
         nonlocal ok
-        f = validate("<mem>", html=html)
+        f = validate("<mem>", html=html, category=category)
         hit = any(c == code and lvl == "FAIL" for lvl, c, _ in f)
         good = hit if should_fail else not hit
         print(f"  {'PASS' if good else 'FAIL'}  {name}")
@@ -209,6 +217,18 @@ def selftest():
            GOOD.replace('class="hsplit"', 'class="x"'), "cards", True)
     expect("missing lightbox boilerplate is caught",
            GOOD.replace(".lb{position:fixed}", ""), "boiler", True)
+    # local-service: a page with NO gallery + NO lightbox must PASS under the flag
+    ls_page = GOOD.replace('<div class="gallery" data-gallery="casatest"></div>', "") \
+                  .replace(".lb{position:fixed}", "") \
+                  .replace('<script id="gallery-data">window.GALLERY={"casatest":'
+                           '[{"src":"data:image/jpeg;base64,xx"}]}</script>', "")
+    expect("local-service page without gallery passes (--category)",
+           ls_page, "gallery", False, category="local-service")
+    expect("local-service page without lightbox passes (--category)",
+           ls_page, "boiler", False, category="local-service")
+    # …but the SAME page must still FAIL as travel (guard against the flag leaking)
+    expect("travel page without gallery still fails (flag is scoped)",
+           ls_page, "gallery", True, category="travel")
     print("selftest:", "ALL PASS" if ok else "FAILURES")
     sys.exit(0 if ok else 1)
 
@@ -222,7 +242,13 @@ def main():
     if sys.argv[1] == "--arc-board":
         print("arc-board is exempt from this gate")
         sys.exit(0)
-    findings = validate(sys.argv[1])
+    args = sys.argv[1:]
+    category = "travel"
+    if "--category" in args:
+        i = args.index("--category")
+        category = args[i + 1] if i + 1 < len(args) else "travel"
+        args = args[:i] + args[i + 2:]
+    findings = validate(args[0], category=category)
     fails = [f for f in findings if f[0] == "FAIL"]
     for lvl, code, msg in findings:
         print(f"  {lvl}  [{code}] {msg}")
