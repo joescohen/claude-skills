@@ -36,12 +36,17 @@ It is a **layered preference model** (L1/L2/L3 — see `references/preference-mo
   + current picks, **L3 instance decisions + per-leg salience + lead value**, open decisions, and a dated
   **Change Log**.
 
-**Trip lifecycle (frontmatter `status:` — the capture hook and STEP 0 both key on it):**
+**Trip lifecycle (frontmatter `status:` — STEP 0 keys on it):**
 - Every trip file opens with YAML frontmatter: `status: active | reference | completed`.
   **active** = an upcoming/live dated trip (the default capture target); **reference** = an undated
   standing hunt (e.g. "best restaurants in the home city"); **completed** = the trip happened —
-  set it promptly when a trip's dates pass; completed/archived trips are excluded from hook scope
-  and from active-trip selection. Multiple actives are legal; the newest-modified active wins.
+  set it promptly when a trip's dates pass; completed/archived trips are excluded from active-trip
+  selection. Multiple actives are legal; the newest-modified active wins.
+- **This skill fires NOTHING in the background.** It runs ONLY when explicitly invoked (the Skill
+  tool / an explicit `/best-finder` call). There are deliberately NO always-on hooks — a prior
+  hook-based capture/flush enforcement layer was removed 2026-07-18 because it injected travel
+  context into unrelated sessions (it matched place-name substrings in non-travel prompts). Capture
+  happens inline while the skill is actively running, never via a global hook.
 - **When a trip file must exist:** any run that captures a preference/decision, or any multi-step
   run. A one-off LOW-stakes lookup may run stateless — but its deliverables still go under
   `runs/<trip-id>/`, and the moment ANY preference is revealed, create the trip file and capture it.
