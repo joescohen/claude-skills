@@ -2,6 +2,13 @@
 
 Personal use → ~zero paid APIs needed. Cost target: $0 for typical volume.
 
+**Freshness rule — bot-walls are time-variant.** Every "verified <date>" claim below (Reddit 403,
+actor behavior, blocked endpoints) is a snapshot, not a law. On any failure of a documented path,
+re-probe the alternatives before paying for a workaround — and conversely, don't assume a
+previously-dead free path is still dead if the paid path breaks: a 60-second re-probe beats
+trusting a months-old verdict in either direction. When a re-probe flips a verdict, update the
+stamp here.
+
 ## Tiered fetch/search stack (cheapest-first; Tiers 0/1/3 already connected)
 - **Tier 0 — WebSearch + WebFetch (native, $0):** the workhorse; finding pages + reading static
   editorial HTML.

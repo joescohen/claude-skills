@@ -39,7 +39,9 @@ function readStdin() {
   if (stopActive) process.exit(0);
   if (!sessionId) process.exit(0);
 
-  const marker = path.join(os.tmpdir(), "best-finder-active-" + sessionId.replace(/[^\w.-]/g, "_"));
+  // Markers live in state (written by best-finder-capture.js), not os.tmpdir().
+  const marker = path.join(os.homedir(), ".claude", "best-finder", ".session-markers",
+    sessionId.replace(/[^\w.-]/g, "_"));
   let tripPath = "";
   try {
     tripPath = fs.readFileSync(marker, "utf8").trim();

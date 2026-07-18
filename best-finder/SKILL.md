@@ -36,8 +36,26 @@ It is a **layered preference model** (L1/L2/L3 — see `references/preference-mo
   + current picks, **L3 instance decisions + per-leg salience + lead value**, open decisions, and a dated
   **Change Log**.
 
+**Trip lifecycle (frontmatter `status:` — the capture hook and STEP 0 both key on it):**
+- Every trip file opens with YAML frontmatter: `status: active | reference | completed`.
+  **active** = an upcoming/live dated trip (the default capture target); **reference** = an undated
+  standing hunt (e.g. "best restaurants in the home city"); **completed** = the trip happened —
+  set it promptly when a trip's dates pass; completed/archived trips are excluded from hook scope
+  and from active-trip selection. Multiple actives are legal; the newest-modified active wins.
+- **When a trip file must exist:** any run that captures a preference/decision, or any multi-step
+  run. A one-off LOW-stakes lookup may run stateless — but its deliverables still go under
+  `runs/<trip-id>/`, and the moment ANY preference is revealed, create the trip file and capture it.
+- **Compaction (do it, don't let the file grow forever):** when a trip file exceeds ~400 lines or
+  the Change Log ~30 entries, compact — roll resolved decisions into the canonical sections,
+  collapse superseded shortlists, and summarize older Change Log entries into one dated digest
+  block (keep the recent raw tail). Captured preferences roll UP, never OUT — compaction may never
+  delete a preference/decision, only restate it more densely.
+
 **Continuous-needs-capture protocol (NON-NEGOTIABLE):**
-1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. Don't re-ask for
+1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. For a trip file over
+   ~400 lines, read the canonical sections (`## Context`, `## Current Itinerary`,
+   `## Trip Architecture`, open decisions) + the recent Change Log tail — not the whole file — and
+   schedule a compaction pass. Don't re-ask for
    **hard facts** already recorded (home city, dietary, fixed constraints). But **surface-before-apply**
    for **decision-bearing values**: before the carried-in L1 values shape this run, name the 3–5 that
    will and let the user set any aside for *this* trip — *"Carrying in from past trips: [values]. Still
@@ -173,16 +191,16 @@ hotel MCPs (trivago/DirectBooker) for stays.
 claude.ai (no subagents), run the same reader/verifier prompts inline and sequentially. The
 verification gate and stakes-scaling are identical in both.
 
-### PHASE 3.5 — Verification gate (`references/methodology.md`)
+### PHASE 3.5 — Verification gate (`references/methodology.md` — CANONICAL; this is a summary)
 Between reader-return and scoring, the conductor verifies reader claims against ground truth
-— **on every run, not just high-stakes** (relaying ≠ verifying):
-- every load-bearing URL resolves (no 404 / redirect-to-home);
-- each candidate's scores trace to a real, cited listing;
-- `[VERIFIED]` is allowed only when ≥2 **genuinely independent** source TYPES are present
-  (two mirrors of one crowd don't count);
-- citation sanity-check — a mismatched/again-wrong URL demotes the claim to unverified.
-Failed claims are **demoted, not silently dropped** — surface them in the sourcing-gaps panel.
-Only verified inputs flow into the Phase 4 data-sufficiency scoring.
+— **on every run, not just high-stakes** (relaying ≠ verifying). In brief: URLs resolve, scores
+trace to real cited listings with per-datum provenance, bidirectional **entity-resolution**
+(drop wrong-entity data; consolidate listing variants before any thin/discard verdict),
+`[VERIFIED]` only on ≥2 genuinely independent source types, failed claims demoted (surfaced in
+the sourcing-gaps panel) never silently dropped. The full gate — including the
+consolidate-before-thin rule and the outlier-robustness conditions — lives in
+`references/methodology.md`; run THAT version, not this summary. Only verified inputs flow into
+Phase 4 data-sufficiency scoring.
 
 ### PHASE 4 — Data-Sufficiency Gate (`references/methodology.md`)
 Score independence × depth × recency × convergence × distribution-obtained → HIGH / MEDIUM / LOW
@@ -220,12 +238,16 @@ Capture every reaction to state.
 - Capture needs continuously to persistent state.
 
 ## References (load as needed)
+**Conflict rule:** where a summary in this file and a reference file disagree, the **reference file
+wins** — it is the canonical, drift-controlled text; this file is the dispatch map.
 - `references/methodology.md` — convergence engine, anti-inflation scoring, data-sufficiency gate.
 - `references/strategy.md` — destination-strategy layer (functions A–E) + the named-framework map.
 - `references/trip-architecture.md` — the staged Trip Architecture protocol (PAINT→ELICIT→LOCK), the inference guard, the Leg-Identity board + state schema, the visual arc-board template.
 - `references/preference-model.md` — the layered L1/L2/L3 preference model: ladder-on-capture, the don't-transplant guard, Phase 1.5 Value Instantiation, the archetype enum, append-only L2 learning.
 - `references/data-sources.md` — the $0 data stack, source maps, ToS posture.
 - `references/output-style.md` — painted-picture format + provenance + critique loop.
+- `references/gallery-lightbox.md` — canonical pick-card skeleton + gallery CSS/JS + fetch/embed
+  scripts (the structural boilerplate every full-picture page must include).
 - `agents/source-readers.md` — the parallel reader agent prompts.
 - `agents/strategy-researcher.md` — Phase-2A "how to do X" regional-consensus researcher.
 - `agents/verifier.md` — blind adversarial verifier (high-stakes finalist stress-test).

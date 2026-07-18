@@ -3,7 +3,9 @@
 Dispatched by the conductor during Phase 2 (Destination Strategy), before venue discovery,
 to research how to "do" a region so the strategy is grounded in consensus rather than
 assumed. Keeps its raw reading out of the conductor's context — it returns a structured
-digest only. Use `compound-engineering:ce-web-researcher`. Dispatch on MEDIUM/HIGH-stakes
+digest only. Use `compound-engineering:ce-web-researcher`, dispatched with an explicit
+`model: "sonnet"` (standing rule: subagents never inherit the conductor's main model).
+Dispatch on MEDIUM/HIGH-stakes
 multi-interest or multi-leg trips; skip for a single low-stakes venue lookup.
 
 ## Input the conductor injects

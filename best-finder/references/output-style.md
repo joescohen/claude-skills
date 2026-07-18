@@ -129,6 +129,14 @@ Style: clean editorial design, region-appropriate palette, score bars + confiden
 inline CSS (no external deps). Save to the PINNED deliverable base —
 `~/Engineering/projects/best-options-research/runs/<trip-id>/<query>.html` (absolute; see SKILL.md →
 Output locations — never a cwd-relative `runs/...` path) — and send via SendUserFile.
+
+**STRUCTURAL GATE (run it, don't eyeball it).** Before SendUserFile, run
+`python3 <skill>/scripts/validate_deliverable.py <page.html>` — it executes the NON-NEGOTIABLE rules
+above (pinned path, picks-first ordering, pick-card skeleton, gallery-in-every-scorebox,
+no hotlinked images, shared boilerplate present). A FAIL is ship-blocking: fix and re-run until it
+passes; WARNs are surfaced in chat alongside the file. The arc-board is exempt (no pick cards).
+The script self-tests with `--selftest` — if you change the skeleton contract, update the validator
+and its selftest in the same edit.
 Reference implementation (canonical structure + visual style — its section *order* is superseded by the
 ordering rule above): `best-options-research/runs/italy-2026/tuscany-castles-rerun.html` (the version
 WITH per-pick galleries + lightbox; this is the structural reference every page should match).

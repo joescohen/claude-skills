@@ -21,3 +21,4 @@ best-finder/dist/
 !ei-audit-project/**
 !ei-loop/
 !ei-loop/**
+__pycache__/

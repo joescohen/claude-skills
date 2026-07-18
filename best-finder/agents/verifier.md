@@ -5,7 +5,8 @@ stress-test a finalist before it is presented. **Isolation is the contract:** th
 receives ONLY the candidate and its evidence bundle — never the conductor's narrative,
 fit-verdict, ranking, or the user's stated preference for it. An attached skeptic is not a
 skeptic. Use `general-purpose` (or `compound-engineering:ce-web-researcher` if it must
-re-fetch sources).
+re-fetch sources), dispatched with an explicit `model: "sonnet"` (standing rule: subagents
+never inherit the conductor's main model).
 
 ## Input the conductor injects (and NOTHING else)
 - Candidate: name, exact location, category, dates/seasonality.

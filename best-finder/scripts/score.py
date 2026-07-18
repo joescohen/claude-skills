@@ -2,9 +2,22 @@
 """
 best-finder deterministic scoring.
 
-Keeps the anti-inflation math out of the prompt: within-platform percentile,
+Keeps the anti-inflation math out of the prompt: within-platform calibration,
 Bayesian shrinkage, recency decay, convergence bonus, and a data-sufficiency
 confidence tier. Pure stdlib. I/O is JSON so this lifts cleanly into an MCP later.
+
+SCORE SEMANTICS: `final_score` is the candidate's recency-weighted advantage
+ABOVE ITS OWN PLATFORM'S NORM (in stars), plus a convergence bonus — never an
+average of raw cross-platform stars (a 4.3 Google != 4.3 Yelp; a Tabelog 3.8
+can beat a Google 4.6). Shrinkage pulls each platform mean toward THAT
+platform's own mean, so thin-volume listings converge to "no advantage."
+
+AUTHORITY: the confidence tier here is a deterministic ADVISORY floor computed
+from the numeric inputs. The narrative gates in references/methodology.md
+(entity consolidation, outlier-robustness, verification) may DEMOTE a tier but
+never promote one above what this code computes.
+
+Tested by test_score.py (paired positive controls) — run it after any change.
 
 Usage:
     echo '<candidates-json>' | python3 score.py
@@ -46,12 +59,15 @@ def distribution_bimodality(dist):
 
 
 def confidence_tier(c):
+    """The five named sufficiency factors (methodology.md): independence,
+    depth, recency, distribution-obtained, convergence. HIGH requires ALL of
+    the first four; convergence is expressed through the types count."""
     types = len(set(c.get("source_types", [])))
     depth = c.get("text_depth", 0)
     has_dist = any(p.get("distribution") for p in c.get("platforms", []))
     recent = any((p.get("newest_review_age_days") or 9999) <= 540
                  for p in c.get("platforms", []))
-    if types >= 3 and depth >= 10 and recent:
+    if types >= 3 and depth >= 10 and recent and has_dist:
         return "HIGH"
     if types >= 2 and depth >= 4:
         return "MEDIUM"
@@ -61,14 +77,18 @@ def confidence_tier(c):
 def score_candidate(c, prior_mean, m):
     platform_scores, flags = [], []
     for p in c.get("platforms", []):
-        shrunk = bayesian_shrunk(p["mean"], p.get("count", 0), prior_mean, m)
-        # within-platform relative position (how far above this platform's own mean)
-        rel = p["mean"] - p.get("platform_mean", prior_mean)
+        # Shrink toward THIS platform's own mean (fall back to the category
+        # prior only when the platform mean is unknown): low volume -> the
+        # listing converges to "no advantage over the platform norm."
+        platform_prior = p.get("platform_mean", prior_mean)
+        shrunk = bayesian_shrunk(p["mean"], p.get("count", 0), platform_prior, m)
+        # within-platform advantage, volume-disciplined — THE unit of score
+        delta = shrunk - platform_prior
         w = recency_weight(p.get("newest_review_age_days"))
         platform_scores.append({
             "platform": p.get("platform"),
             "shrunk": round(shrunk, 3),
-            "within_platform_delta": round(rel, 3),
+            "within_platform_delta": round(delta, 3),
             "recency_weight": round(w, 3),
             "bimodality": distribution_bimodality(p.get("distribution")),
         })
@@ -80,11 +100,12 @@ def score_candidate(c, prior_mean, m):
     if c.get("burst_flag"):
         flags.append("review burst detected — possible manufactured 5-stars")
 
-    base = sum(s["shrunk"] * s["recency_weight"] for s in platform_scores)
+    # base = recency-weighted mean of within-platform deltas (never raw stars)
+    base = sum(s["within_platform_delta"] * s["recency_weight"] for s in platform_scores)
     base = base / (sum(s["recency_weight"] for s in platform_scores) or 1)
     convergence = len(set(c.get("source_types", [])))
-    convergence_bonus = 0.15 * max(0, convergence - 1)  # reward independent agreement
-    final = round(base * (1 + convergence_bonus), 3)
+    convergence_bonus = 0.1 * max(0, convergence - 1)  # reward independent agreement
+    final = round(base + convergence_bonus, 3)
     return {
         "name": c.get("name"),
         "final_score": final,
