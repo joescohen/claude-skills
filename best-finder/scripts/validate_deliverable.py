@@ -78,13 +78,14 @@ class Structure(HTMLParser):
             return
         self.stack.pop()
         if self._card_depth is not None and len(self.stack) < self._card_depth:
-            # the card just closed. Only a card carrying .prop-h is a PICK card
-            # (prose/info boxes legitimately reuse .card without the skeleton).
-            if "prop-h" in self._card_classes:
+            # the card just closed. A PICK card carries BOTH .prop-h AND .hsplit
+            # (the story|scorebox split). Cards with .prop-h but no .hsplit are
+            # prose/set-aside boxes that legitimately reuse .card — not pick cards.
+            if "prop-h" in self._card_classes and "hsplit" in self._card_classes:
                 self.cards += 1
                 if self.first_card_pos is None:
                     self.first_card_pos = self._card_pos
-                for req in ("hsplit", "story", "scorebox"):
+                for req in ("story", "scorebox"):
                     if req not in self._card_classes:
                         self.card_missing.append((self.cards, req))
             self._card_depth = None
@@ -126,15 +127,20 @@ def validate(path, html=None):
     if s.cards and 'id="gallery-data"' not in html:
         fail("gallery", 'missing <script id="gallery-data"> block (galleries will render empty)')
 
-    # ordering: answer first — first pick card must precede the supporting "why"
+    # ordering: answer first — the first pick card must precede the supporting
+    # "why" SECTIONS. Match markers only in heading context (<h2>/<h3>), so a
+    # table-of-contents / jump-nav link with the same words is NOT a false hit.
+    low = html.lower()
     why_markers = ["how i scored", "evidence base", "how it all came together",
                    "what you should be looking for"]
-    low = html.lower()
-    for m in why_markers:
-        i = low.find(m)
-        if i != -1 and s.first_card_pos is not None and i < s.first_card_pos:
-            fail("order", f'supporting section "{m}" appears BEFORE the first pick card — '
-                 "the answer must lead the page")
+    headings = [(m.start(), (m.group(1) or "").lower())
+                for m in re.finditer(r"<h[23][^>]*>(.*?)</h[23]>", html,
+                                     re.IGNORECASE | re.DOTALL)]
+    for pos, text in headings:
+        for mk in why_markers:
+            if mk in text and s.first_card_pos is not None and pos < s.first_card_pos:
+                fail("order", f'supporting section "{mk}" appears BEFORE the first pick '
+                     "card — the answer must lead the page")
 
     # hotlinked images (never hot-link; broken images cheapen it)
     hot = re.findall(r'<img[^>]+src="(https?://[^"]{0,80})', html)
@@ -182,6 +188,16 @@ def selftest():
 
     expect("good page passes gallery/cards/order/hotlink", GOOD, "gallery", False)
     expect("good page passes cards", GOOD, "cards", False)
+    # a TOC/nav link naming a 'why' section must NOT trip the order check
+    expect("TOC link with 'How I scored' is not a false order hit",
+           GOOD.replace('<a href="#picks">Picks</a>',
+                        '<a href="#s">How I scored</a><a href="#e">Evidence base</a>'),
+           "order", False)
+    # a set-aside prose card (.prop-h but no .hsplit) is not a pick card
+    expect("set-aside prose card (prop-h, no hsplit) is not miscounted",
+           GOOD + '<div class="card"><div class="prop-h"><h3>Set aside</h3></div>'
+                  '<p>prose only, no scorebox</p></div>',
+           "cards", False)
     expect("missing gallery placeholder is caught",
            GOOD.replace('<div class="gallery" data-gallery="casatest"></div>', ""),
            "gallery", True)
