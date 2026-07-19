@@ -2,6 +2,13 @@
 
 Personal use → ~zero paid APIs needed. Cost target: $0 for typical volume.
 
+**Freshness rule — bot-walls are time-variant.** Every "verified <date>" claim below (Reddit 403,
+actor behavior, blocked endpoints) is a snapshot, not a law. On any failure of a documented path,
+re-probe the alternatives before paying for a workaround — and conversely, don't assume a
+previously-dead free path is still dead if the paid path breaks: a 60-second re-probe beats
+trusting a months-old verdict in either direction. When a re-probe flips a verdict, update the
+stamp here.
+
 ## Tiered fetch/search stack (cheapest-first; Tiers 0/1/3 already connected)
 - **Tier 0 — WebSearch + WebFetch (native, $0):** the workhorse; finding pages + reading static
   editorial HTML.
@@ -148,6 +155,38 @@ re-fires are avoided.
   run: adding an Italian-language pass surfaced a top romantic pick the English-only pass missed
   (Castello La Leccia) and flipped a candidate (Tornano — locals: "resort aspirations, farmhouse
   service"). Always run a local-language reader for non-English destinations.
+
+## Local-service source maps (non-travel — the expert leg is CERTIFICATION, not curators)
+For LOCAL-SERVICE runs (mechanic, dentist, plumber, HVAC, vet, etc.) the three independent legs stay
+the same, but the **expert/editorial leg is licensing + certification + trade authority**, not travel
+curators. The community and crowd legs are unchanged (Reddit via Apify + the Google-Maps histogram are
+the anti-inflation workhorses — local services are a PRIME manipulated-review category, so the
+per-star distribution + `reviewsTags` matter even more than for restaurants). General principle:
+**expert leg = "who vouches for competence with something at stake"** (a license, an accreditation, a
+membership that can be revoked). Maps:
+
+- **Auto repair / tires:** AAA Approved Auto Repair (aaa.com locator), **RepairPal Certified**
+  (repairpal.com), **ASE certification** (Blue Seal of Excellence), **BBB** accreditation + letter
+  grade; make-specific competence via the brand's service pages + marque forums (e.g. Mazda3Revolution,
+  Mazdas247) and **r/MechanicAdvice · r/AskMechanics · r/<Make>** for insider signal; local editorial
+  "Best of" (city magazine reader polls). Chains (Firestone/Mr. Tire/Pep Boys/NTB) skew toward the
+  upsell-complaint tail — read their 1★ distribution hard.
+- **Dentist / doctor / medical:** state licensing board (license status + disciplinary actions — the
+  real gate), ABMS board-certification, Healthgrades/Zocdoc **only** as crowd (heavy inflation),
+  hospital/specialty-society directories; community via r/<City> + condition-specific subs.
+- **Plumber / HVAC / electrician / home services:** state contractor license lookup (+ bond/insurance),
+  BBB grade, manufacturer-certified installer lists (e.g. Carrier/Trane/Lennox dealers), Angi/HomeAdvisor
+  as crowd-only (pay-to-lead bias — never treat as expert), r/<City> + r/HVAC/r/Plumbing.
+- **Vet:** AAHA accreditation, state board license, Fear-Free certification; r/<City> + r/AskVet.
+- **Salon/barber, gym, etc.:** thinner expert leg — lean on crowd distribution + community convergence;
+  say so and lower confidence honestly (a category with no real certification authority is a legit
+  LOW/MEDIUM ceiling, not a failure).
+
+**Local-language inversion does NOT apply** to a US local-service run (English crowd + Reddit is
+correct). The proximity preference is usually load-bearing — sort by distance-to-user, and surface the
+credential/crowd tradeoff when the best-credentialed shop is farther (as with the Canton car-repair run:
+strongest certs sat 6 mi out with the weakest distribution). Reference instance:
+`best-options-research/runs/car-repair-baltimore-2026/`.
 
 ## ToS-safe posture (personal, read-only)
 Logged-out public access; **ephemeral** (no stored review DB — only the user's own needs/profile);

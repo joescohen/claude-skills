@@ -5,11 +5,22 @@ a self-reported richness, and writes a raw file. Conductor alone synthesizes (ne
 output) — and FIRST runs the Phase 3.5 verification gate on every reader claim (URLs resolve,
 scores trace, ≥2 independent types) before scoring; see `references/methodology.md`.
 Use `compound-engineering:ce-web-researcher` for web readers; `general-purpose` for local/MCP tasks.
+**Model pinning (standing rule):** dispatch every reader with an explicit `model: "sonnet"` — never
+let readers inherit the conductor's (more expensive) main model. Escalate a single reader's model
+only when its output is demonstrably the run's bottleneck, and say so.
 
 Shared context to inject into every reader: the query, location, dates/seasonality, party + mode +
 budget (from the user's needs file), the geography-correct source list (data-sources.md), and the
 output path (PINNED, absolute — see SKILL.md → Output locations)
 `~/Engineering/projects/best-options-research/runs/<trip-id>/raw/<type>-<query>.md`.
+
+**LOCAL-SERVICE runs (mechanic/dentist/plumber/HVAC/vet/…):** same three independent legs, but the
+**expert reader targets certification/licensing** (AAA/RepairPal/ASE/BBB, state boards, trade
+authorities — see the Local-service source maps in `data-sources.md`), NOT travel curators; the
+community reader hunts the honest-recommendation + AVOID/upsell-trap lists (r/<City>, r/MechanicAdvice,
+Nextdoor, Yelp/Birdeye review TEXT); the crowd reader pulls the Google-Maps histogram exactly as below
+(the anti-inflation core is unchanged — local services are a prime manipulated-review category). Inject
+the user's proximity preference and the specific item (vehicle/home system) into every reader.
 
 ---
 ## Expert-curation reader

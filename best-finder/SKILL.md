@@ -1,16 +1,19 @@
 ---
 name: best-finder
 description: >
-  Use when the user wants to find genuinely BEST options — restaurants, places to stay
-  (hotels/Airbnb/villas), or experiences/activities — or to plan/optimize a trip, while
-  defeating rating inflation on mainstream platforms (Yelp, Google, TripAdvisor, Booking).
-  It guides with option-menus at every step, builds a destination strategy (how to "do" a
-  place + what to capitalize on where across a multi-stop trip), paints experiential
-  pictures of options weighed against what the user wants, and CONTINUOUSLY captures the
-  user's needs to a persistent file. Trigger phrases: "find the best X", "where should we
-  stay / eat", "how do we do [place]", "plan my trip to [place]", "is this place actually
-  good / overrated", "best [restaurant/hotel/wine tour/activity] in [place]", "low-key /
-  legit / hidden-gem spots", "what am I missing".
+  Use when the user wants to find the genuinely BEST option and defeat rating inflation on
+  mainstream platforms (Yelp, Google, TripAdvisor, Booking) — across TWO category families:
+  (1) TRAVEL — restaurants, places to stay (hotels/Airbnb/villas), experiences/activities, or
+  planning/optimizing a trip; and (2) LOCAL SERVICE — a trusted, competent, fair-priced local
+  provider (mechanic/auto repair & tires, dentist/doctor, plumber/HVAC/electrician & other home
+  services, salon/barber, vet, gym, etc.). It guides with option-menus, runs a convergence engine
+  over structurally independent sources (expert/certification + community + a de-biased crowd
+  distribution), paints an honest picture of each option weighed against what the user wants, and
+  captures needs to a persistent file. Trigger phrases: "find the best X", "where should we stay /
+  eat", "plan my trip to [place]", "is this place actually good / overrated", "best [restaurant /
+  hotel / wine tour / activity] in [place]", "best / most honest [mechanic / plumber / dentist /
+  HVAC / vet / barber] near me", "who should I take my car to", "a shop that won't rip me off",
+  "low-key / legit / hidden-gem spots", "what am I missing".
 ---
 
 # best-finder
@@ -32,12 +35,43 @@ It is a **layered preference model** (L1/L2/L3 — see `references/preference-mo
 - `USER-PROFILE.md` — durable, cross-trip: **L1 core values** (place-agnostic) + the **L2 context-shape
   mapping** (`value × place-archetype → criteria`, append-only) + who the user is, taste tendencies,
   decision style, recurring constraints, interaction preferences.
-- `trips/<trip-id>.md` — the living needs doc for an active trip: context, interests, per-category needs
-  + current picks, **L3 instance decisions + per-leg salience + lead value**, open decisions, and a dated
-  **Change Log**.
+- `trips/<id>.md` — the living needs doc for one active piece of work (a **trip** OR a standing
+  **local-service query**). The directory name is historical; entries need not be travel. Two schemas:
+  - **TRAVEL:** context, interests, per-category needs + current picks, **L3 instance decisions +
+    per-leg salience + lead value**, open decisions, `## Current Itinerary`, `## Trip Architecture`,
+    dated **Change Log**.
+  - **LOCAL-SERVICE:** `## Context` (category, location + proximity pref, the specific item — e.g.
+    the vehicle, the home system), `## Buying criteria` (the category rubric — honesty/no-upsell,
+    written estimates, competence, price transparency, fit-to-job), `## Current picks`, `## Sourcing`,
+    dated **Change Log**. NO Itinerary / Trip-Architecture sections (they don't apply). See
+    `trips/car-repair-baltimore-2026.md` as the reference instance.
+
+**Lifecycle (frontmatter `status:` — STEP 0 keys on it):**
+- Every state file opens with YAML frontmatter: `status: active | reference | completed`.
+  **active** = a live dated trip (the default travel capture target); **reference** = an undated
+  standing hunt (e.g. "best restaurants in the home city," or a local-service query like "car repair
+  near Canton" that recurs); **completed** = the trip happened — set it promptly when dates pass;
+  completed/archived files are excluded from active selection. Multiple actives are legal; the
+  newest-modified active wins. Local-service queries are normally `reference` (they have no dates).
+- **This skill fires NOTHING in the background.** It runs ONLY when explicitly invoked (the Skill
+  tool / an explicit `/best-finder` call). There are deliberately NO always-on hooks — a prior
+  hook-based capture/flush enforcement layer was removed 2026-07-18 because it injected travel
+  context into unrelated sessions (it matched place-name substrings in non-travel prompts). Capture
+  happens inline while the skill is actively running, never via a global hook.
+- **When a trip file must exist:** any run that captures a preference/decision, or any multi-step
+  run. A one-off LOW-stakes lookup may run stateless — but its deliverables still go under
+  `runs/<trip-id>/`, and the moment ANY preference is revealed, create the trip file and capture it.
+- **Compaction (do it, don't let the file grow forever):** when a trip file exceeds ~400 lines or
+  the Change Log ~30 entries, compact — roll resolved decisions into the canonical sections,
+  collapse superseded shortlists, and summarize older Change Log entries into one dated digest
+  block (keep the recent raw tail). Captured preferences roll UP, never OUT — compaction may never
+  delete a preference/decision, only restate it more densely.
 
 **Continuous-needs-capture protocol (NON-NEGOTIABLE):**
-1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. Don't re-ask for
+1. **On every run, STEP 0:** read `USER-PROFILE.md` and the active trip file. For a trip file over
+   ~400 lines, read the canonical sections (`## Context`, `## Current Itinerary`,
+   `## Trip Architecture`, open decisions) + the recent Change Log tail — not the whole file — and
+   schedule a compaction pass. Don't re-ask for
    **hard facts** already recorded (home city, dietary, fixed constraints). But **surface-before-apply**
    for **decision-bearing values**: before the carried-in L1 values shape this run, name the 3–5 that
    will and let the user set any aside for *this* trip — *"Carrying in from past trips: [values]. Still
@@ -68,25 +102,49 @@ which is the bug this rule exists to prevent). `<trip-id>` matches the state tri
   - every raw reader / strategy / verifier file → `…/<trip-id>/raw/<type>-<query>.md`
   This base is the single source of truth for the path; the agent prompts and output-style.md reference it.
 
+## Category families — TRAVEL vs LOCAL-SERVICE (which layers apply)
+best-finder covers two families. **The convergence engine, verification gate, data-sufficiency
+gate, anti-inflation scoring, and continuous capture are IDENTICAL for both** — they are
+category-agnostic. Only the *travel-shaping* layers differ:
+
+| Layer | TRAVEL (restaurant · stay · experience · trip-planning) | LOCAL-SERVICE (mechanic · dentist · plumber · HVAC · vet · barber · …) |
+|---|---|---|
+| Phase 1.5 Value Instantiation (place-archetypes) | **applies** | **SKIP** — place-archetypes are travel-only; use the category buying-criteria rubric instead |
+| Phase 2 Trip Architecture (PAINT→ELICIT→LOCK, arc-board, day-budget, Peak-End) | **applies** on multi-leg/MEDIUM+ | **SKIP entirely** — a local service is a single-lookup, non-trip decision |
+| Expert/editorial source leg | travel curators (Michelin, Gambero Rosso, Relais & Châteaux…) | **certification/licensing bodies** (AAA, RepairPal, ASE, BBB, state boards, trade authorities) — see `references/data-sources.md` |
+| Output "painted picture" | vibe + day-to-day reality incl. food/dining logistics | **trust + competence + price transparency + fit-to-job** — see `references/output-style.md` |
+| State schema | trip file (`## Current Itinerary`, `## Trip Architecture`) | query file (Context · Buying-criteria · Picks · Sourcing · Change Log) — see below |
+| Deliverable photo gallery | required | **optional** (storefront photos rarely inform the decision) |
+
+**A LOCAL-SERVICE run is: STEP 0 → PHASE 1 (scope+stakes) → PHASE 3 (discovery) → 3.5 → 4 → 5.**
+It skips 1.5 and 2 outright. When in doubt about family, ask in Phase 1.
+
 ## The pipeline
 
 ```
-STEP 0    Load state (profile + active trip)            ← always
-PHASE 1   Scope + Stakes (option-menus)
-PHASE 1.5 Value Instantiation (L1 → archetype → L2 criteria)  → references/preference-model.md
-PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  → references/strategy.md + references/trip-architecture.md + agents/strategy-researcher.md
+STEP 0    Load state (profile + active trip/query)      ← always
+PHASE 1   Scope + Stakes + CATEGORY FAMILY (option-menus)
+PHASE 1.5 Value Instantiation (L1 → archetype → L2 criteria)  → TRAVEL only · references/preference-model.md
+PHASE 2   Destination Strategy → Trip Architecture (PAINT→ELICIT→LOCK)  → TRAVEL only · references/strategy.md + references/trip-architecture.md + agents/strategy-researcher.md
 PHASE 3   Discovery (convergence engine)  → references/methodology.md + agents/
 PHASE 3.5 Verification gate (verify reader claims vs ground truth)  → references/methodology.md
 PHASE 4   Data-Sufficiency Gate (confidence tiers)
 PHASE 5   Painted-picture output + critique-refine loop  → references/output-style.md
 (capture needs continuously across all phases; conductor is the sole state-writer)
+(LOCAL-SERVICE family: run STEP 0 → 1 → 3 → 3.5 → 4 → 5; skip 1.5 and 2)
 ```
 
 ### PHASE 1 — Scope + Stakes (always option-menus)
 Use `AskUserQuestion` with 2–4 concrete labelled options + a recommended default + a
 "you decide / other" escape. Establish (skipping anything already in state):
-- **Category** (restaurant · stay · experience) or **trip-planning** mode.
-- **Where + when** (location → loads the geography source map; dates → seasonality + booking urgency).
+- **Category family + category.** TRAVEL → `restaurant · stay · experience · trip-planning`;
+  LOCAL-SERVICE → `auto repair/tires · dentist/doctor · plumber/HVAC/electrician · home services ·
+  salon/barber · vet · other`. The family selects which layers run (see the table above): a
+  LOCAL-SERVICE category **skips Phase 1.5 and Phase 2** and goes straight scope → discovery →
+  output. Usually the family is obvious from the request ("best mechanic near me" = local-service);
+  only ask if genuinely ambiguous.
+- **Where + when** (location → loads the geography/certification source map; dates → seasonality +
+  booking urgency for travel; for local-service "when" is usually just urgency).
 - **Per-trip "mode"** (blowout / strategic-splurge / value-aware / local-hidden-gem / specific-need).
 - **⭐ Discovery intent (explore vs exploit)** — a separate axis from mode and stakes. Is the user
   *dialing in* what they already know they like (**exploit** — lean on the profile as a strong prior),
@@ -173,16 +231,16 @@ hotel MCPs (trivago/DirectBooker) for stays.
 claude.ai (no subagents), run the same reader/verifier prompts inline and sequentially. The
 verification gate and stakes-scaling are identical in both.
 
-### PHASE 3.5 — Verification gate (`references/methodology.md`)
+### PHASE 3.5 — Verification gate (`references/methodology.md` — CANONICAL; this is a summary)
 Between reader-return and scoring, the conductor verifies reader claims against ground truth
-— **on every run, not just high-stakes** (relaying ≠ verifying):
-- every load-bearing URL resolves (no 404 / redirect-to-home);
-- each candidate's scores trace to a real, cited listing;
-- `[VERIFIED]` is allowed only when ≥2 **genuinely independent** source TYPES are present
-  (two mirrors of one crowd don't count);
-- citation sanity-check — a mismatched/again-wrong URL demotes the claim to unverified.
-Failed claims are **demoted, not silently dropped** — surface them in the sourcing-gaps panel.
-Only verified inputs flow into the Phase 4 data-sufficiency scoring.
+— **on every run, not just high-stakes** (relaying ≠ verifying). In brief: URLs resolve, scores
+trace to real cited listings with per-datum provenance, bidirectional **entity-resolution**
+(drop wrong-entity data; consolidate listing variants before any thin/discard verdict),
+`[VERIFIED]` only on ≥2 genuinely independent source types, failed claims demoted (surfaced in
+the sourcing-gaps panel) never silently dropped. The full gate — including the
+consolidate-before-thin rule and the outlier-robustness conditions — lives in
+`references/methodology.md`; run THAT version, not this summary. Only verified inputs flow into
+Phase 4 data-sufficiency scoring.
 
 ### PHASE 4 — Data-Sufficiency Gate (`references/methodology.md`)
 Score independence × depth × recency × convergence × distribution-obtained → HIGH / MEDIUM / LOW
@@ -220,12 +278,16 @@ Capture every reaction to state.
 - Capture needs continuously to persistent state.
 
 ## References (load as needed)
+**Conflict rule:** where a summary in this file and a reference file disagree, the **reference file
+wins** — it is the canonical, drift-controlled text; this file is the dispatch map.
 - `references/methodology.md` — convergence engine, anti-inflation scoring, data-sufficiency gate.
 - `references/strategy.md` — destination-strategy layer (functions A–E) + the named-framework map.
 - `references/trip-architecture.md` — the staged Trip Architecture protocol (PAINT→ELICIT→LOCK), the inference guard, the Leg-Identity board + state schema, the visual arc-board template.
 - `references/preference-model.md` — the layered L1/L2/L3 preference model: ladder-on-capture, the don't-transplant guard, Phase 1.5 Value Instantiation, the archetype enum, append-only L2 learning.
 - `references/data-sources.md` — the $0 data stack, source maps, ToS posture.
 - `references/output-style.md` — painted-picture format + provenance + critique loop.
+- `references/gallery-lightbox.md` — canonical pick-card skeleton + gallery CSS/JS + fetch/embed
+  scripts (the structural boilerplate every full-picture page must include).
 - `agents/source-readers.md` — the parallel reader agent prompts.
 - `agents/strategy-researcher.md` — Phase-2A "how to do X" regional-consensus researcher.
 - `agents/verifier.md` — blind adversarial verifier (high-stakes finalist stress-test).

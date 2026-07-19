@@ -20,6 +20,11 @@ Weight by (1) economic independence from the reviewed entity, (2) reviewer anony
 text-required crowd ≫ star-only crowd.
 
 ## Scoring (deterministic — see scripts/score.py)
+**Authority split:** `score.py`'s confidence tier is the deterministic ADVISORY floor computed from
+the numeric inputs; the narrative gates below (entity consolidation, outlier-robustness,
+verification) may **demote** a tier but never promote one above what the code computes. On any
+tier disagreement, the LOWER verdict ships. `scripts/test_score.py` is the paired positive control
+— run it after any change to the scoring math.
 - **Within-platform percentile, never raw cross-platform stars** (a 4.3 Google ≠ 4.3 Yelp).
 - **Bayesian shrinkage** so low-volume 5.0s don't beat high-volume 4.3s:
   `WR = (v/(v+m))·R + (m/(v+m))·C` (calibrate C, m from the pulled data — never hardcode offsets).
