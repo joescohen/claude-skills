@@ -1,0 +1,5 @@
+# Codex reads this file; Claude Code ignores it. Explicit-only: Codex must not pick this
+# skill by description. On 2026-09-04 implicit selection of these orchestrator skills
+# fanned out subagents and drained a week of quota. Invoke with $ei-recursive-goal if you truly want it.
+policy:
+  allow_implicit_invocation: false

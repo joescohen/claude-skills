@@ -22,3 +22,11 @@ best-finder/dist/
 !ei-loop/
 !ei-loop/**
 __pycache__/
+# improve/ and verification-lanes/ are not tracked here, but their Codex explicit-only
+# policy file is, so the guard is under version control. Directories only, one file each.
+!improve/
+!improve/agents/
+!improve/agents/openai.yaml
+!verification-lanes/
+!verification-lanes/agents/
+!verification-lanes/agents/openai.yaml
